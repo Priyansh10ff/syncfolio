@@ -18,7 +18,15 @@ edit your profile by hand.
 - [x] `/api/profile` — public JSON endpoint (bring your own portfolio)
 - [x] Dashboard: manual profile/experience/projects/skills editor
 - [x] Email magic-link auth
-- [ ] Phase 2 — AI chat updates ("shipped X, add it" → structured diff)
+
+## Status: Phase 2 (this repo)
+
+Phase 2 adds the AI update layer.
+
+- [x] `/dashboard/updates` — type a plain-English note, Claude drafts a structured diff
+- [x] `pending_updates` review queue — nothing writes until you approve it
+- [x] `/api/updates/parse` — note → proposed create/update rows (matched against your existing data)
+- [x] `/api/updates/apply` — approve writes the change, reject discards it
 - [ ] Phase 3 — Resume generation (Typst/LaTeX → PDF)
 - [ ] Phase 4 — Portfolio publish flow (webhooks, ISR revalidate)
 - [ ] Phase 5 — Sync: GitHub-scan suggestions + external-edit reconciliation, review queue
@@ -28,9 +36,16 @@ edit your profile by hand.
 1. Create a [Supabase](https://supabase.com) project.
 2. Run `supabase/schema.sql` in the SQL editor.
 3. In Authentication settings, enable Email OTP (magic link) sign-in.
-4. Copy `.env.example` to `.env.local` and fill in your Supabase URL + anon key.
+4. Copy `.env.example` to `.env.local` and fill in your Supabase URL + anon key. `ANTHROPIC_API_KEY` is optional — everything except the AI update box on `/dashboard/updates` works without it, including all manual add/edit/delete on the Profile page.
 5. `npm install`
 6. `npm run dev`
+
+## How an update gets applied
+
+1. You type a note on `/dashboard/updates` (e.g. "shipped Redis caching on Patchwork, cut p95 latency 40%").
+2. Claude reads your existing profile, matches the note to an existing row or decides it's new, and proposes one or more structured diffs.
+3. Each proposal lands in `pending_updates` with a plain-English summary — nothing is written to your real data yet.
+4. You approve or reject each one from the same page. Approving writes it to the actual table; rejecting discards it.
 
 ## Using your profile data elsewhere
 
@@ -56,11 +71,16 @@ src/
     api/experience/       → POST / DELETE
     api/projects/         → POST / DELETE
     api/skills/           → POST / DELETE
+    api/updates/parse/    → note → proposed diffs (via Claude)
+    api/updates/apply/    → approve/reject a pending diff
+    api/updates/pending/  → list unresolved diffs
     auth/callback/        → magic-link session exchange
-    dashboard/            → profile editor + phase 2-5 stubs
+    dashboard/            → profile editor, updates review queue, phase 3-5 stubs
     login/                → email sign-in
   lib/
     schema/profile.ts     → canonical Profile shape (zod)
+    ai/parse-update.ts    → Claude call + prompt for note → structured diff
+    ai/proposed-update.ts → zod schema for a proposed diff
     supabase/             → server + browser clients
     profile.ts            → assembles Profile from Supabase tables
 supabase/schema.sql        → Postgres schema + RLS policies
