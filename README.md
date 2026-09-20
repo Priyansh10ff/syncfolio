@@ -27,8 +27,17 @@ Phase 2 adds the AI update layer.
 - [x] `pending_updates` review queue — nothing writes until you approve it
 - [x] `/api/updates/parse` — note → proposed create/update rows (matched against your existing data)
 - [x] `/api/updates/apply` — approve writes the change, reject discards it
-- [ ] Phase 3 — Resume generation (Typst/LaTeX → PDF)
+
+## Status: Phase 3 (this repo)
+
+Phase 3 adds resume generation.
+
+- [x] `/dashboard/resume` — live preview, generated straight from your profile
+- [x] `GET /api/resume/pdf` — downloadable PDF, no separate template to maintain
 - [ ] Phase 4 — Portfolio publish flow (webhooks, ISR revalidate)
+
+Resume rendering uses `@react-pdf/renderer` (pure JS) rather than LaTeX/Typst — no
+binary to install, so it works out of the box on serverless deploys like Vercel.
 - [ ] Phase 5 — Sync: GitHub-scan suggestions + external-edit reconciliation, review queue
 
 ## Setup
@@ -74,13 +83,15 @@ src/
     api/updates/parse/    → note → proposed diffs (via Claude)
     api/updates/apply/    → approve/reject a pending diff
     api/updates/pending/  → list unresolved diffs
+    api/resume/pdf/       → GET: renders the profile to a downloadable PDF
     auth/callback/        → magic-link session exchange
-    dashboard/            → profile editor, updates review queue, phase 3-5 stubs
+    dashboard/            → profile editor, updates queue, resume preview, phase 4-5 stubs
     login/                → email sign-in
   lib/
     schema/profile.ts     → canonical Profile shape (zod)
     ai/parse-update.ts    → Claude call + prompt for note → structured diff
     ai/proposed-update.ts → zod schema for a proposed diff
+    resume/template.tsx   → the resume layout, shared by preview and PDF download
     supabase/             → server + browser clients
     profile.ts            → assembles Profile from Supabase tables
 supabase/schema.sql        → Postgres schema + RLS policies
