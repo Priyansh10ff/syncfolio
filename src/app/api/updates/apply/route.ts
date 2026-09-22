@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfileId } from "@/lib/current-profile-id";
+import { triggerWebhook } from "@/lib/webhook";
 
 const WRITABLE_TABLES = ["experience", "projects", "skills", "education", "profiles"] as const;
 
@@ -73,5 +74,15 @@ export async function POST(req: Request) {
   }
 
   await supabase.from("pending_updates").update({ status: "approved" }).eq("id", id);
+  triggerWebhook(profileId, {
+    section: (table === "profiles" ? "profile" : table) as
+      | "profile"
+      | "experience"
+      | "projects"
+      | "skills"
+      | "education",
+    action: __action,
+    id: __target_id ?? undefined,
+  });
   return NextResponse.json({ ok: true });
 }

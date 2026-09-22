@@ -1,27 +1,12 @@
+import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Profile, emptyProfile } from "@/lib/schema/profile";
 
-/**
- * Loads the current user's full profile, assembled from the normalized
- * Supabase tables into the single Profile shape the rest of the app
- * (API, resume generator, dashboard UI) works with.
- */
-export async function getProfile(): Promise<Profile> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return emptyProfile();
-
-  const { data: profileRow } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!profileRow) return emptyProfile();
-
+async function assembleProfile(
+  supabase: SupabaseClient,
+  profileRow: any
+): Promise<Profile> {
   const [{ data: experience }, { data: projects }, { data: skills }, { data: education }] =
     await Promise.all([
       supabase
@@ -55,6 +40,45 @@ export async function getProfile(): Promise<Profile> {
     education: education ?? [],
     updated_at: profileRow.updated_at,
   };
+}
+
+/** Loads the signed-in user's own profile (dashboard, resume, internal use). */
+export async function getProfile(): Promise<Profile> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return emptyProfile();
+
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!profileRow) return emptyProfile();
+  return assembleProfile(supabase, profileRow);
+}
+
+/**
+ * Loads a profile by its public capability token — no session required.
+ * This is what powers the token-authenticated /api/profile read that
+ * external portfolio sites use. Returns null if the token doesn't
+ * match anything or the service role key isn't configured.
+ */
+export async function getProfileByToken(token: string): Promise<Profile | null> {
+  const admin = createAdminClient();
+  if (!admin) return null;
+
+  const { data: profileRow } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("public_token", token)
+    .single();
+
+  if (!profileRow) return null;
+  return assembleProfile(admin, profileRow);
 }
 
 /** Ensures a profiles row exists for the current user, creating one if needed. */

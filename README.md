@@ -28,24 +28,43 @@ Phase 2 adds the AI update layer.
 - [x] `/api/updates/parse` — note → proposed create/update rows (matched against your existing data)
 - [x] `/api/updates/apply` — approve writes the change, reject discards it
 
-## Status: Phase 3 (this repo)
+## Status: Phase 4 (this repo)
 
-Phase 3 adds resume generation.
+Phase 3 added resume generation:
 
 - [x] `/dashboard/resume` — live preview, generated straight from your profile
 - [x] `GET /api/resume/pdf` — downloadable PDF, no separate template to maintain
-- [ ] Phase 4 — Portfolio publish flow (webhooks, ISR revalidate)
 
-Resume rendering uses `@react-pdf/renderer` (pure JS) rather than LaTeX/Typst — no
-binary to install, so it works out of the box on serverless deploys like Vercel.
+Resume rendering uses `@react-pdf/renderer` (pure JS) rather than LaTeX/Typst —
+no binary to install, so it works out of the box on serverless deploys like
+Vercel.
+
+Phase 4 adds the portfolio publish flow — letting an existing portfolio in
+any stack stay in sync without a full rebuild on every change:
+
+- [x] Public read-only token — `/dashboard/portfolio` shows a capability URL
+      (`/api/profile?token=...`) any separately-deployed site can fetch
+- [x] Webhook on change — fires `{ section, action, id }` after every write,
+      so the receiver can revalidate just that page, not the whole site
+- [x] `/api/profile/external-sync` — inbound endpoint for edits made directly
+      on the portfolio; lands as a pending suggestion, never a silent overwrite
 - [ ] Phase 5 — Sync: GitHub-scan suggestions + external-edit reconciliation, review queue
+
+The review UI for `pending_updates` rows created by external-sync (and by
+GitHub-scan, later) is what Phase 5 builds — the endpoint and the queue
+already exist, there's just no dashboard page to approve/reject them yet.
 
 ## Setup
 
 1. Create a [Supabase](https://supabase.com) project.
 2. Run `supabase/schema.sql` in the SQL editor.
 3. In Authentication settings, enable Email OTP (magic link) sign-in.
-4. Copy `.env.example` to `.env.local` and fill in your Supabase URL + anon key. `ANTHROPIC_API_KEY` is optional — everything except the AI update box on `/dashboard/updates` works without it, including all manual add/edit/delete on the Profile page.
+4. Copy `.env.example` to `.env.local` and fill in your Supabase URL + anon
+   key. `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are both
+   optional — manual profile editing, resume generation, and your own
+   signed-in `/api/profile` access all work without either. They only gate
+   the AI update box and the public token / external-sync endpoints,
+   respectively.
 5. `npm install`
 6. `npm run dev`
 
@@ -58,42 +77,51 @@ binary to install, so it works out of the box on serverless deploys like Vercel.
 
 ## Using your profile data elsewhere
 
-Once signed in, your profile is available as JSON:
+Signed in, your profile is available at `GET /api/profile`. From outside —
+a separately deployed portfolio with no session — use the token shown on
+`/dashboard/portfolio`:
 
 ```
-GET /api/profile
+GET /api/profile?token=<your public_token>
 ```
 
-Any portfolio — Next.js, Astro, Hugo, plain HTML — can fetch this at
-build time or request time. Phase 4 adds a public read-only token so
-this works from a separately deployed site without a session, plus a
-webhook so your site can trigger a targeted rebuild (not a full
-redeploy) when something changes.
+Any framework — Next.js, Astro, Hugo, plain HTML+fetch — can pull this at
+build time or request time. Set a webhook URL on the same page and Loom
+will call it after every change with `{ section, action, id }`, so your
+site can revalidate just the affected page instead of rebuilding
+everything. If your portfolio has its own edit UI and someone changes
+something there, POST the change to `/api/profile/external-sync` with the
+same token — it queues as a pending suggestion rather than overwriting
+Loom's data.
 
 ## Repo structure
 
 ```
 src/
   app/
-    api/profile/         → GET: full profile as JSON
-    api/profile/basics/  → PATCH: name, headline, summary, links
-    api/experience/       → POST / DELETE
-    api/projects/         → POST / DELETE
-    api/skills/           → POST / DELETE
-    api/updates/parse/    → note → proposed diffs (via Claude)
-    api/updates/apply/    → approve/reject a pending diff
-    api/updates/pending/  → list unresolved diffs
-    api/resume/pdf/       → GET: renders the profile to a downloadable PDF
-    auth/callback/        → magic-link session exchange
-    dashboard/            → profile editor, updates queue, resume preview, phase 4-5 stubs
-    login/                → email sign-in
+    api/profile/               → GET: full profile as JSON (session or ?token=)
+    api/profile/basics/        → PATCH: name, headline, summary, links
+    api/profile/webhook/       → PATCH: save the publish webhook URL
+    api/profile/token/         → POST: rotate the public read token
+    api/profile/external-sync/ → POST: external edits → pending queue
+    api/experience/            → POST / DELETE
+    api/projects/              → POST / DELETE
+    api/skills/                → POST / DELETE
+    api/updates/parse/         → note → proposed diffs (via Claude)
+    api/updates/apply/         → approve/reject a pending diff
+    api/updates/pending/       → list unresolved diffs
+    api/resume/pdf/            → GET: renders the profile to a downloadable PDF
+    auth/callback/             → magic-link session exchange
+    dashboard/                 → profile editor, updates queue, resume preview, portfolio settings, phase 5 stub
+    login/                     → email sign-in
   lib/
     schema/profile.ts     → canonical Profile shape (zod)
     ai/parse-update.ts    → Claude call + prompt for note → structured diff
     ai/proposed-update.ts → zod schema for a proposed diff
     resume/template.tsx   → the resume layout, shared by preview and PDF download
-    supabase/             → server + browser clients
-    profile.ts            → assembles Profile from Supabase tables
+    webhook.ts             → fires the configured webhook after a write
+    supabase/              → server, browser, and admin (service-role) clients
+    profile.ts             → assembles Profile from Supabase tables, by session or public token
 supabase/schema.sql        → Postgres schema + RLS policies
 ```
 

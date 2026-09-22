@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfileId } from "@/lib/current-profile-id";
+import { triggerWebhook } from "@/lib/webhook";
 
 export async function POST(req: Request) {
   const profileId = await getCurrentProfileId();
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  triggerWebhook(profileId, { section: "skills", action: "create" });
   return NextResponse.json({ ok: true });
 }
 
@@ -32,5 +34,6 @@ export async function DELETE(req: Request) {
     .eq("profile_id", profileId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  triggerWebhook(profileId, { section: "skills", action: "delete", id });
   return NextResponse.json({ ok: true });
 }

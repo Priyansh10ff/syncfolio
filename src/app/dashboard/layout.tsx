@@ -2,9 +2,9 @@ import Link from "next/link";
 
 const nav = [
   { href: "/dashboard/profile", label: "Profile" },
-  { href: "/dashboard/updates", label: "Updates", soon: true },
-  { href: "/dashboard/resume", label: "Resume", soon: true },
-  { href: "/dashboard/portfolio", label: "Portfolio", soon: true },
+  { href: "/dashboard/updates", label: "Updates" },
+  { href: "/dashboard/resume", label: "Resume" },
+  { href: "/dashboard/portfolio", label: "Portfolio" },
   { href: "/dashboard/sync", label: "Sync", soon: true },
 ];
 
@@ -27,7 +27,7 @@ export default function DashboardLayout({
               <span>{item.label}</span>
               {item.soon && (
                 <span className="text-[10px] text-[var(--loom-muted)]">
-                  phase 2
+                  phase 5
                 </span>
               )}
             </Link>

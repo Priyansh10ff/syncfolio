@@ -10,8 +10,11 @@ create table if not exists profiles (
   location text,
   email text,
   links jsonb not null default '[]',
+  public_token uuid not null default gen_random_uuid(),
+  webhook_url text,
   updated_at timestamptz not null default now(),
-  unique (user_id)
+  unique (user_id),
+  unique (public_token)
 );
 
 create table if not exists experience (
