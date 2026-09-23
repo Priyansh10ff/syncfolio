@@ -13,6 +13,7 @@ export default async function UpdatesPage() {
       .select("*")
       .eq("profile_id", profileId)
       .eq("status", "pending")
+      .eq("source", "ai_chat")
       .order("created_at", { ascending: false });
     pending = data ?? [];
   }

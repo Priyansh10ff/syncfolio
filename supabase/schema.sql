@@ -12,6 +12,7 @@ create table if not exists profiles (
   links jsonb not null default '[]',
   public_token uuid not null default gen_random_uuid(),
   webhook_url text,
+  github_username text,
   updated_at timestamptz not null default now(),
   unique (user_id),
   unique (public_token)

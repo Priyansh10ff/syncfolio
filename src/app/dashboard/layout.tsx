@@ -5,7 +5,7 @@ const nav = [
   { href: "/dashboard/updates", label: "Updates" },
   { href: "/dashboard/resume", label: "Resume" },
   { href: "/dashboard/portfolio", label: "Portfolio" },
-  { href: "/dashboard/sync", label: "Sync", soon: true },
+  { href: "/dashboard/sync", label: "Sync" },
 ];
 
 export default function DashboardLayout({
@@ -25,11 +25,6 @@ export default function DashboardLayout({
               className="flex items-center justify-between rounded px-2 py-1.5 text-[var(--loom-ink)] hover:bg-[var(--loom-thread-soft)] transition-colors"
             >
               <span>{item.label}</span>
-              {item.soon && (
-                <span className="text-[10px] text-[var(--loom-muted)]">
-                  phase 5
-                </span>
-              )}
             </Link>
           ))}
         </nav>

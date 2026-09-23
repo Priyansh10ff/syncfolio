@@ -48,11 +48,26 @@ any stack stay in sync without a full rebuild on every change:
       so the receiver can revalidate just that page, not the whole site
 - [x] `/api/profile/external-sync` — inbound endpoint for edits made directly
       on the portfolio; lands as a pending suggestion, never a silent overwrite
-- [ ] Phase 5 — Sync: GitHub-scan suggestions + external-edit reconciliation, review queue
 
-The review UI for `pending_updates` rows created by external-sync (and by
-GitHub-scan, later) is what Phase 5 builds — the endpoint and the queue
-already exist, there's just no dashboard page to approve/reject them yet.
+## Status: Phase 5 (this repo) — feature-complete
+
+Phase 5 adds Sync: the review queue, plus GitHub-scan.
+
+- [x] `/dashboard/sync` — approve/reject queue for everything that isn't a
+      direct manual edit or an AI-chat update: GitHub-scan finds, external
+      edits pushed back via `/api/profile/external-sync`
+- [x] GitHub scan — reads your public, non-fork repos (unauthenticated
+      GitHub API, no token needed) and proposes new projects for repos not
+      already linked in your profile; re-scanning skips repos already
+      queued or already tracked
+- [x] `/dashboard/updates` (Phase 2) now shows only AI-chat proposals;
+      Sync shows GitHub and external-edit proposals — same underlying
+      `pending_updates` table and the same approve/reject endpoint either way
+
+That's the full loop from the original plan: manual editing, AI-parsed
+updates, resume export, a portfolio-agnostic data API with change
+webhooks, and reconciliation in both directions — nothing writes to your
+real profile without you approving it first.
 
 ## Setup
 
@@ -103,22 +118,25 @@ src/
     api/profile/basics/        → PATCH: name, headline, summary, links
     api/profile/webhook/       → PATCH: save the publish webhook URL
     api/profile/token/         → POST: rotate the public read token
+    api/profile/github/        → PATCH: save the GitHub username to scan
     api/profile/external-sync/ → POST: external edits → pending queue
     api/experience/            → POST / DELETE
     api/projects/              → POST / DELETE
     api/skills/                → POST / DELETE
     api/updates/parse/         → note → proposed diffs (via Claude)
-    api/updates/apply/         → approve/reject a pending diff
+    api/updates/apply/         → approve/reject a pending diff (any source)
     api/updates/pending/       → list unresolved diffs
     api/resume/pdf/            → GET: renders the profile to a downloadable PDF
+    api/sync/github-scan/      → POST: scan public repos, queue new-project proposals
     auth/callback/             → magic-link session exchange
-    dashboard/                 → profile editor, updates queue, resume preview, portfolio settings, phase 5 stub
+    dashboard/                 → profile editor, AI updates, resume preview, portfolio settings, sync queue
     login/                     → email sign-in
   lib/
     schema/profile.ts     → canonical Profile shape (zod)
     ai/parse-update.ts    → Claude call + prompt for note → structured diff
     ai/proposed-update.ts → zod schema for a proposed diff
     resume/template.tsx   → the resume layout, shared by preview and PDF download
+    github/scan.ts         → fetch public repos, diff against existing projects
     webhook.ts             → fires the configured webhook after a write
     supabase/              → server, browser, and admin (service-role) clients
     profile.ts             → assembles Profile from Supabase tables, by session or public token
