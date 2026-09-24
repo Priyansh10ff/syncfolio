@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfileId } from "@/lib/current-profile-id";
+import { PendingUpdateRow } from "@/lib/schema/pending-update-row";
 import UpdatesClient from "./updates-client";
 
 export default async function UpdatesPage() {
   const profileId = await getCurrentProfileId();
-  let pending: any[] = [];
+  let pending: PendingUpdateRow[] = [];
 
   if (profileId) {
     const supabase = await createClient();

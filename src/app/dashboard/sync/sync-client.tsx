@@ -1,13 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { PendingUpdateRow } from "@/lib/schema/pending-update-row";
 
-type PendingRow = {
-  id: string;
-  target_table: string;
-  source: string;
-  diff_summary: string;
-};
+type PendingRow = PendingUpdateRow;
 
 const sourceLabel: Record<string, string> = {
   github_scan: "GitHub",

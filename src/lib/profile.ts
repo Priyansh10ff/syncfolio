@@ -1,11 +1,21 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Profile, emptyProfile } from "@/lib/schema/profile";
+import { Profile, Link, emptyProfile } from "@/lib/schema/profile";
+
+type ProfileRow = {
+  id: string;
+  name: string | null;
+  headline: string | null;
+  summary: string | null;
+  location: string | null;
+  email: string | null;
+  links: Link[] | null;  updated_at: string;
+};
 
 async function assembleProfile(
   supabase: SupabaseClient,
-  profileRow: any
+  profileRow: ProfileRow
 ): Promise<Profile> {
   const [{ data: experience }, { data: projects }, { data: skills }, { data: education }] =
     await Promise.all([

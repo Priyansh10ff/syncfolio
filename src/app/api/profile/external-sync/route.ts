@@ -20,6 +20,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
  *   diff_summary: string,
  * }> }
  */
+type ExternalChange = {
+  target_table: "experience" | "projects" | "skills" | "education" | "profiles";
+  action: "create" | "update";
+  target_id: string | null;
+  payload: Record<string, unknown>;
+  diff_summary?: string;
+};
+
 export async function POST(req: Request) {
   const admin = createAdminClient();
   if (!admin) {
@@ -46,7 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
 
-  const rows = changes.map((c: any) => ({
+  const rows = (changes as ExternalChange[]).map((c) => ({
     profile_id: profileRow.id,
     source: "external_sync" as const,
     target_table: c.target_table,

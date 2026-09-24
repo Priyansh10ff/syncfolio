@@ -1,13 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { PendingUpdateRow } from "@/lib/schema/pending-update-row";
 
-type PendingRow = {
-  id: string;
-  target_table: string;
-  diff_summary: string;
-  status: string;
-};
+type PendingRow = PendingUpdateRow;
 
 export default function UpdatesClient({
   initialPending,

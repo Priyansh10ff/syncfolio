@@ -45,13 +45,17 @@ export async function POST() {
 
   const queuedUrls = new Set(
     (alreadyQueued ?? [])
-      .map((row: any) => row.payload?.links?.[0]?.url)
+      .map((row: { payload: Record<string, unknown> }) => {
+        const links = row.payload?.links as Array<{ url: string }> | undefined;
+        return links?.[0]?.url;
+      })
       .filter(Boolean)
   );
 
-  const freshProposals = proposals.filter(
-    (p) => !queuedUrls.has((p.payload.links as any[])?.[0]?.url)
-  );
+  const freshProposals = proposals.filter((p) => {
+    const links = p.payload.links as Array<{ url: string }> | undefined;
+    return !queuedUrls.has(links?.[0]?.url);
+  });
 
   if (freshProposals.length === 0) {
     return NextResponse.json({ pending: [], message: "Nothing new since last scan." });

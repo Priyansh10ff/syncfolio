@@ -249,7 +249,7 @@ function EntityList<T extends { id: string }>({
   );
 }
 
-function AddExperienceForm({ onAdded }: { onAdded: (row: any) => void }) {
+function AddExperienceForm({ onAdded }: { onAdded: (row: Profile["experience"][number]) => void }) {
   const [role, setRole] = useState("");
   const [org, setOrg] = useState("");
   const [start, setStart] = useState("");
@@ -306,7 +306,7 @@ function AddExperienceForm({ onAdded }: { onAdded: (row: any) => void }) {
   );
 }
 
-function AddProjectForm({ onAdded }: { onAdded: (row: any) => void }) {
+function AddProjectForm({ onAdded }: { onAdded: (row: Profile["projects"][number]) => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
@@ -357,7 +357,7 @@ function AddProjectForm({ onAdded }: { onAdded: (row: any) => void }) {
   );
 }
 
-function AddSkillForm({ onAdded }: { onAdded: (row: any) => void }) {
+function AddSkillForm({ onAdded }: { onAdded: (row: Profile["skills"][number]) => void }) {
   const [name, setName] = useState("");
 
   async function submit() {

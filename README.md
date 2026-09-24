@@ -143,6 +143,10 @@ src/
 supabase/schema.sql        → Postgres schema + RLS policies
 ```
 
+## Contributing
+
+See `CONTRIBUTING.md` — setup, ground rules, and good first areas.
+
 ## License
 
 MIT.

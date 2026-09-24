@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfileId } from "@/lib/current-profile-id";
+import { PendingUpdateRow } from "@/lib/schema/pending-update-row";
 import SyncClient from "./sync-client";
 
 export default async function SyncPage() {
   const profileId = await getCurrentProfileId();
-  let pending: any[] = [];
+  let pending: PendingUpdateRow[] = [];
   let githubUsername: string | null = null;
 
   if (profileId) {
