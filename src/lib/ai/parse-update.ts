@@ -1,6 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { Profile } from "@/lib/schema/profile";
 import { parseResultSchema, ParseResult } from "./proposed-update";
+import { getProvider, isAIConfigured } from "./providers";
+
+export { isAIConfigured };
 
 const SYSTEM_PROMPT = `You turn a person's casual, informal note about something that changed in their career or work into structured updates for their profile database.
 
@@ -14,7 +16,7 @@ Decide, for each distinct change implied by the note, whether it:
 
 Match against existing rows by meaning, not exact string — "the trading bot" should match an existing project literally named "BSE/NSE paper-trading bot" if that's the closest existing thing.
 
-Output ONLY a JSON object matching this exact shape, nothing else — no markdown fences, no preamble:
+Respond with ONLY a JSON object matching this exact shape — no markdown fences, no preamble, no text before or after the JSON:
 
 {
   "updates": [
@@ -63,40 +65,33 @@ function summarizeProfile(profile: Profile): string {
   return lines.join("\n");
 }
 
-/** True when an Anthropic key is present — used to gate the AI updates feature on/off cleanly. */
-export function isAIConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+/** Strips markdown code fences a model added despite instructions not to. */
+function stripFences(text: string): string {
+  return text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
 }
 
 export async function parseUpdateText(
   note: string,
   profile: Profile
 ): Promise<ParseResult> {
-  if (!isAIConfigured()) {
-    // Manual editing on /dashboard/profile never depends on this — this
-    // only blocks the natural-language update box.
-    throw new Error("AI_NOT_CONFIGURED");
-  }
+  // Manual editing on /dashboard/profile never depends on this — this
+  // only blocks the natural-language update box.
+  const provider = getProvider(); // throws "AI_NOT_CONFIGURED" if nothing is set up
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const message = await client.messages.create({
-    model: "claude-sonnet-5",
-    max_tokens: 2000,
+  const raw = await provider.complete({
     system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Existing profile:\n${summarizeProfile(profile)}\n\nNote:\n"""${note}"""`,
-      },
-    ],
+    user: `Existing profile:\n${summarizeProfile(profile)}\n\nNote:\n"""${note}"""`,
+    maxTokens: 2000,
   });
 
-  const textBlock = message.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from model");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stripFences(raw));
+  } catch {
+    throw new Error(
+      `${provider.id} returned text that wasn't valid JSON. Smaller local models sometimes need a stricter prompt or a JSON-mode/grammar setting — see docs/DEPLOYMENT.md.`
+    );
   }
 
-  const cleaned = textBlock.text.trim().replace(/^```json\s*|```$/g, "");
-  const parsed = JSON.parse(cleaned);
   return parseResultSchema.parse(parsed);
 }

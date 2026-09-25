@@ -25,17 +25,15 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "AI updates aren't set up yet (missing ANTHROPIC_API_KEY). You can still add and edit everything by hand on the Profile page.",
+            "AI updates aren't set up yet. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, or LOCAL_AI_BASE_URL for a local model — see the Configuration section in README.md. You can still add and edit everything by hand on the Profile page.",
           not_configured: true,
         },
         { status: 501 }
       );
     }
+    const message = err instanceof Error ? err.message : "Couldn't parse that update.";
     console.error(err);
-    return NextResponse.json(
-      { error: "Couldn't parse that update. Try rephrasing." },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 
   if (result.updates.length === 0) {

@@ -58,8 +58,9 @@ export default function UpdatesClient({
     <div className="flex flex-col gap-8">
       {notConfigured && (
         <div className="text-sm border border-[var(--loom-line)] rounded px-3 py-2 bg-[var(--loom-thread-soft)]">
-          AI updates need an <code>ANTHROPIC_API_KEY</code> in your environment. Until
-          then, add and edit everything by hand on the{" "}
+          AI updates need a model provider configured — Claude, GPT, Gemini, or a
+          local model. See the Configuration section in the README. Until then,
+          add and edit everything by hand on the{" "}
           <a href="/dashboard/profile" className="underline">
             Profile page
           </a>{" "}

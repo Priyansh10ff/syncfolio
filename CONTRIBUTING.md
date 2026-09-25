@@ -4,10 +4,11 @@ Thanks for taking a look. This is a young project — happy to have help.
 
 ## Setup
 
-Follow the Setup section in `README.md`. You'll need a free Supabase
-project; `ANTHROPIC_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are optional
-and only needed for the AI update box and the public/external-sync
-endpoints respectively.
+Follow [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) (local setup section).
+You'll need a free Supabase project. An AI provider key and
+`SUPABASE_SERVICE_ROLE_KEY` are optional and only needed for the AI
+update box and the public/external-sync endpoints respectively — see
+`.env.example` for the full list, including local-model options.
 
 ## Ground rules
 
@@ -25,6 +26,11 @@ endpoints respectively.
 - **The `Profile` zod schema in `src/lib/schema/profile.ts` is the
   contract.** If you change its shape, update `supabase/schema.sql`,
   the resume template, and the `/api/profile` consumers together.
+- **AI providers are interchangeable.** `src/lib/ai/providers/` defines
+  one `AIProvider` interface (`complete({ system, user, maxTokens })`);
+  `parse-update.ts` doesn't know or care which one is active. Adding a
+  new provider means adding one file there and registering it in
+  `providers/index.ts` — nothing else should need to change.
 
 ## Before opening a PR
 
@@ -34,7 +40,9 @@ npm run build   # type-checks + catches broken routes
 npm run lint
 ```
 
-Both run in CI on every PR — a red build or lint won't get merged.
+Both run in CI on every PR — a red build or lint won't get merged. For
+anything touching more than one feature area, also run through
+[`docs/TESTING.md`](docs/TESTING.md) before requesting review.
 
 ## Good first areas
 
@@ -44,7 +52,9 @@ Both run in CI on every PR — a red build or lint won't get merged.
   (currently intentionally left out — bring-your-own-portfolio is the
   default)
 - More GitHub-scan signal (README-derived bullets, commit-based metrics)
-- Tests — there aren't any yet
+- A real automated test suite (`docs/TESTING.md` is the manual version
+  of what this should cover)
+- Rate limiting on `/api/updates/parse` for multi-user deployments
 
 ## Reporting bugs / proposing features
 
