@@ -1,6 +1,6 @@
-# Loom — Technical Reference
+# Syncfolio — Technical Reference
 
-How Loom is put together: stack, folder layout, data model, API surface,
+How Syncfolio is put together: stack, folder layout, data model, API surface,
 and the rules the codebase follows. For the why and the who, see
 [`PRODUCT.md`](PRODUCT.md).
 
@@ -10,7 +10,7 @@ and the rules the codebase follows. For the why and the who, see
 |---|---|---|
 | Framework | Next.js 16 (App Router) | Server components for pages, route handlers for the API. Read `node_modules/next/dist/docs/` before relying on older Next.js conventions. |
 | Language | TypeScript 5 | Strict mode. |
-| UI | React 19, Tailwind CSS 4, lucide-react | Theme tokens live in `src/app/globals.css` as `--loom-*` CSS variables. |
+| UI | React 19, Tailwind CSS 4, lucide-react | Theme tokens live in `src/app/globals.css` as `--sf-*` CSS variables. |
 | Database | Supabase Postgres | Row Level Security on every table. |
 | Auth | Supabase Auth (email magic link) | Cookie sessions via `@supabase/ssr`. |
 | Validation | zod 4 | Every external shape (profile, AI output, sync payloads) has a schema. |
@@ -28,7 +28,7 @@ and the rules the codebase follows. For the why and the who, see
 │   ├── ISSUE_TEMPLATE/           bug and feature templates
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── docs/
-│   ├── PRODUCT.md                what Loom is, who it's for, why
+│   ├── PRODUCT.md                what Syncfolio is, who it's for, why
 │   ├── TECHNICAL.md              this file
 │   ├── DEPLOYMENT.md             local setup, deploy, production checklist
 │   └── TESTING.md                manual test pass
@@ -47,16 +47,20 @@ and the rules the codebase follows. For the why and the who, see
 │   │   │   ├── layout.tsx        sidebar nav + sign out
 │   │   │   ├── profile/          manual editor (source of truth)
 │   │   │   ├── updates/          AI note box + review queue
-│   │   │   ├── resume/           live preview + PDF download
-│   │   │   ├── portfolio/        public token, endpoint URL, webhook
+│   │   │   ├── resume/           live preview + PDF download (resume module)
+│   │   │   ├── portfolio/        publish, unpublished changes, token, webhook (portfolio module)
+│   │   │   ├── settings/         module toggles, auto-sync default
 │   │   │   └── sync/             GitHub scan + external-sync review queue
 │   │   └── api/
-│   │       ├── profile/          GET full profile (session or ?token=)
+│   │       ├── profile/          GET live profile (session only)
 │   │       │   ├── basics/       PATCH name, headline, summary, links
 │   │       │   ├── token/        POST rotate public token
 │   │       │   ├── webhook/      PATCH webhook URL
 │   │       │   ├── github/       PATCH GitHub username
 │   │       │   └── external-sync/ POST inbound edits → pending queue
+│   │       ├── portfolio/        GET published snapshot (?token=)
+│   │       │   └── publish/      POST publish live profile → new snapshot
+│   │       ├── settings/         PATCH module toggles, auto-sync default
 │   │       ├── experience/       POST / PATCH / DELETE
 │   │       ├── projects/         POST / PATCH / DELETE
 │   │       ├── skills/           POST / PATCH / DELETE
@@ -71,7 +75,9 @@ and the rules the codebase follows. For the why and the who, see
 │       ├── schema/
 │       │   ├── profile.ts        canonical Profile shape (zod)
 │       │   └── pending-update-row.ts
-│       ├── profile.ts            assemble Profile by session or token; ensureProfile
+│       ├── profile.ts            assemble live Profile; ensureProfile
+│       ├── modules.ts            module flags; resume/portfolio views of a Profile
+│       ├── portfolio/publish.ts  build snapshot, diff vs last, fire webhook
 │       ├── current-profile-id.ts resolve signed-in user's profile id
 │       ├── webhook.ts            fire-and-forget change notification
 │       ├── ai/
@@ -102,35 +108,55 @@ auth.users 1──1 profiles 1──* experience
                          1──* skills
                          1──* education
                          1──* pending_updates
+                         1──* portfolio_snapshots
 ```
 
 | Table | Key columns |
 |---|---|
-| `profiles` | `user_id` (unique), `name`, `headline`, `summary`, `location`, `email`, `links` jsonb, `public_token` uuid (unique), `webhook_url`, `github_username` |
-| `experience` | `role`, `org`, `location`, `start_date` (`YYYY-MM`), `end_date` (null = present), `bullets` jsonb, `tags` jsonb, `source` |
-| `projects` | `name`, `description`, `bullets`, `links`, `tags`, `metrics` (all jsonb), `featured`, `source` |
-| `skills` | `name`, `category`, `level` (`learning` / `comfortable` / `strong`) |
-| `education` | `institution`, `degree`, `start_date`, `end_date`, `notes` |
+| `profiles` | `user_id` (unique), `name`, `headline`, `summary`, `location`, `email`, `links` jsonb, `public_token` uuid (unique), `webhook_url`, `github_username`, `resume_enabled` bool, `portfolio_enabled` bool, `portfolio_auto_sync` bool |
+| `experience` | `role`, `org`, `location`, `start_date` (`YYYY-MM`), `end_date` (null = present), `bullets` jsonb, `tags` jsonb, `source`, `show_on_resume`, `show_on_portfolio` |
+| `projects` | `name`, `description`, `bullets`, `links`, `tags`, `metrics` (all jsonb), `featured`, `source`, `show_on_resume`, `show_on_portfolio`, portfolio-only: `slug`, `long_description` (markdown), `cover_image_url` |
+| `skills` | `name`, `category`, `level` (`learning` / `comfortable` / `strong`), `show_on_resume`, `show_on_portfolio` |
+| `education` | `institution`, `degree`, `start_date`, `end_date`, `notes`, `show_on_resume`, `show_on_portfolio` |
 | `pending_updates` | `source` (`ai_chat` / `github_scan` / `external_sync`), `target_table`, `payload` jsonb, `diff_summary`, `status` (`pending` / `approved` / `rejected`) |
+| `portfolio_snapshots` | `data` jsonb (the published portfolio view), `published_at`, `changes` jsonb (what differed from the previous snapshot) |
 
-`source` on content rows records where a row came from (`loom`, `ai`,
+### Two modules, one profile
+
+- `resume_enabled` and `portfolio_enabled` switch each module on or off.
+  At least one stays on. A disabled module disappears from the nav and
+  its routes return `404`.
+- `show_on_resume` / `show_on_portfolio` default to `true` and decide
+  which rows each output includes.
+- The **resume view** is the live profile filtered by `show_on_resume`.
+  It never reads portfolio-only fields.
+- The **portfolio view** is the live profile filtered by
+  `show_on_portfolio`, including portfolio-only fields. It is frozen into
+  `portfolio_snapshots` on publish; external sites only ever see the
+  latest snapshot.
+
+`source` on content rows records where a row came from (`manual`, `ai`,
 `external`). `pending_updates.payload` carries the proposed fields plus
 two control keys, `__action` (`create` / `update`) and `__target_id`.
 
-The TypeScript mirror of this model is `src/lib/schema/profile.ts`. The
-DB, `/api/profile`, the resume template, and external portfolios all
-agree on that shape.
+The TypeScript mirror of this model is `src/lib/schema/profile.ts`, with
+`ResumeView` and `PortfolioView` derived from it in `lib/modules.ts`.
 
 ## How data flows
 
 ```
- manual edit ──────────────────────────────┐
-                                           ▼
- AI note ─────▶ updates/parse ──┐      ┌─────────┐ ──▶ resume preview / PDF
- GitHub scan ─▶ sync/github-scan├─▶ pending ─▶ apply ─▶ │ profile │
- portfolio ───▶ external-sync ──┘   _updates  (approve)  └─────────┘ ──▶ /api/profile?token=
-                                                              │
-                                                              └──▶ webhook → portfolio revalidates
+ manual edit ─────────────────────────────────┐
+                                              ▼
+ AI note ─────▶ updates/parse ──┐          ┌─────────┐ ──▶ resume view ──▶ preview / PDF
+ GitHub scan ─▶ sync/github-scan├▶ pending ▶ apply ──▶ │ profile │
+ portfolio ───▶ external-sync ──┘  _updates (approve)  │  (live) │ ──▶ portfolio view
+                                              │       └─────────┘          │
+                                   sync_portfolio?                         │
+                                     yes ─────────────▶ publish ◀── manual publish
+                                                           │
+                                                 portfolio_snapshots
+                                                           │
+                                     /api/portfolio?token= ◀┴▶ webhook → site revalidates
 ```
 
 Rules:
@@ -139,8 +165,15 @@ Rules:
    reviewer).
 2. **Every automated source** writes only to `pending_updates`. The
    single path from there to real tables is `POST /api/updates/apply`.
-3. **Every successful write** to a content table calls `triggerWebhook`
-   with `{ section, action, id?, changed_at }`.
+3. **The resume is always live.** Any approved or manual change shows in
+   the resume immediately.
+4. **The portfolio is published, not live.** It changes only when a
+   snapshot is published: automatically after an approval with
+   `sync_portfolio: true`, or manually from the Portfolio page.
+5. **Publishing fires the webhook** once, listing every section that
+   changed since the previous snapshot. Ordinary writes never fire it.
+6. **Unpublished changes** are the diff between the current portfolio
+   view and the latest snapshot, shown on the Portfolio page.
 
 ## API reference
 
@@ -150,7 +183,11 @@ Token routes use the service-role client and look the profile up by
 
 | Method | Route | Auth | Purpose |
 |---|---|---|---|
-| GET | `/api/profile` | session or `?token=` | Full profile JSON |
+| GET | `/api/profile` | session | Live profile JSON |
+| GET | `/api/portfolio` | `?token=` | Latest published portfolio snapshot |
+| GET | `/api/portfolio/pending` | session | Unpublished changes (live view vs last snapshot) |
+| POST | `/api/portfolio/publish` | session | Publish a new snapshot and fire the webhook |
+| PATCH | `/api/settings` | session | `resume_enabled`, `portfolio_enabled`, `portfolio_auto_sync` |
 | PATCH | `/api/profile/basics` | session | Update name, headline, summary, location, email, links |
 | POST | `/api/profile/token` | session | Rotate public token |
 | PATCH | `/api/profile/webhook` | session | Set webhook URL |
@@ -162,14 +199,22 @@ Token routes use the service-role client and look the profile up by
 | POST / PATCH / DELETE | `/api/education` | session | CRUD |
 | POST | `/api/updates/parse` | session | Note → proposed diffs |
 | GET | `/api/updates/pending` | session | Unresolved diffs |
-| POST | `/api/updates/apply` | session | `{ id, decision: "approve" \| "reject" }` |
+| POST | `/api/updates/apply` | session | `{ id, decision: "approve" \| "reject", sync_portfolio?: boolean }` (defaults to `portfolio_auto_sync`) |
 | POST | `/api/sync/github-scan` | session | Queue new public repos as projects |
-| GET | `/api/resume/pdf` | session | Download resume PDF |
+| GET | `/api/resume/pdf` | session | Download resume PDF (resume module) |
 
 ### Webhook payload
 
+Sent once per publish:
+
 ```json
-{ "section": "projects", "action": "update", "id": "uuid", "changed_at": "ISO-8601" }
+{
+  "published_at": "ISO-8601",
+  "changes": [
+    { "section": "projects", "action": "update", "id": "uuid" },
+    { "section": "skills", "action": "create", "id": "uuid" }
+  ]
+}
 ```
 
 `section`: `profile | experience | projects | skills | education`.
@@ -218,8 +263,9 @@ Token routes use the service-role client and look the profile up by
   user, so RLS is the last line of defence even if a route has a bug.
 - **Service-role key** is used only in `lib/supabase/admin.ts` and only
   for token-authenticated routes. Never exposed with `NEXT_PUBLIC_`.
-- **Public token** is a capability: it grants read of the profile and
-  the right to *propose* changes. It can never write directly. Rotating
+- **Public token** is a capability: it grants read of the published
+  portfolio snapshot and the right to *propose* changes. It never reads
+  the live profile or anything hidden from the portfolio. It can never write directly. Rotating
   it on `/dashboard/portfolio` kills the old one instantly.
 - **Field allowlists.** Approved payloads are filtered to the editable
   columns of their target table, so a proposal can never set
@@ -253,6 +299,8 @@ Full commented reference: [`.env.example`](../.env.example).
 - **Optional means optional.** Removing any non-Supabase env var must
   leave the app building and running, with a clear message where a
   feature is off.
+- **Modules are independent.** Resume code never imports portfolio code
+  and the reverse. Both read the profile through `lib/modules.ts`.
 - **Shared rendering.** The resume preview and the PDF use the same
   `resume/template.tsx`, so what you see is what downloads.
 - **Scope every query by `profile_id`** in addition to RLS.

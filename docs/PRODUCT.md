@@ -1,4 +1,4 @@
-# Loom — Product Overview
+# Syncfolio — Product Overview
 
 > Tell it what changed once. Your resume and portfolio update themselves.
 
@@ -14,15 +14,15 @@ portfolio is six months stale, and the best recent work is missing from
 both exactly when an application or an interview comes up. The data is
 not hard to write. Keeping it consistent across copies is the hard part.
 
-## What Loom is
+## What Syncfolio is
 
-Loom keeps one structured profile — experience, projects, skills,
+Syncfolio keeps one structured profile — experience, projects, skills,
 education — and treats it as the single source of truth. Every other
 output reads from it:
 
 - **The resume** is generated from the profile, not maintained beside it.
-- **The portfolio** pulls the profile over a JSON API and gets notified
-  by webhook when something changes.
+- **The portfolio** pulls a published copy of the profile over a JSON API
+  and gets notified by webhook when a new version is published.
 - **Updates** come in as plain English. A note like *"shipped Redis
   caching on Patchwork, cut p95 latency 40%"* is turned into a precise,
   structured change to the right project.
@@ -31,6 +31,39 @@ Nothing automated ever writes directly. Every suggestion — from the AI,
 from a GitHub scan, or from an edit made on the portfolio itself — lands
 in a review queue and waits for the user to approve or reject it.
 
+## Resume and portfolio are separate, and both optional
+
+Resume and Portfolio are two independent modules on top of the same
+profile. Turn on one, the other, or both. A student who only needs a PDF
+never sees portfolio settings; someone who only wants their site fed by
+an API never sees the resume page.
+
+They share data but not presentation:
+
+- **Per-item visibility.** Every experience, project, skill and education
+  entry has two switches: *on resume* and *on portfolio*. A small
+  coursework project can live on the portfolio without taking a line on a
+  one-page resume.
+- **Different depth.** The resume uses short bullets and metrics. The
+  portfolio can also carry a long write-up, a cover image and a slug for
+  each project. Neither output needs the other's fields.
+- **Different timing.** The resume always reflects the live profile. The
+  portfolio serves the last *published* version, so a change can land on
+  the resume today and reach the portfolio later, or never.
+
+### Optional auto-sync to the portfolio
+
+When an update is approved, a **sync to portfolio** switch decides what
+happens next:
+
+- **On:** the change is published to the portfolio right away and the
+  webhook fires.
+- **Off:** the change updates the profile and the resume only. The
+  Portfolio page lists it as an unpublished change until the user
+  publishes manually.
+
+The default for the switch is a setting; it can be flipped per update.
+
 ## Who it is for
 
 **Primary: students and early-career developers.** People who ship a lot
@@ -38,7 +71,7 @@ of small and medium projects, apply to internships and jobs constantly,
 and need their resume and portfolio to reflect last week's work, not last
 semester's.
 
-**Secondary: developers who already have a portfolio site.** Loom does
+**Secondary: developers who already have a portfolio site.** Syncfolio does
 not ship a portfolio template. It is built to plug into an existing site
 in any framework — Next.js, Astro, SvelteKit, plain HTML — through one
 endpoint.
@@ -68,8 +101,8 @@ local model, so career data never has to leave the user's machine.
 |---|---|
 | **Profile** | Manual editor for basics, experience, projects, skills, and education. The source of truth. |
 | **Updates** | Natural-language notes become proposed diffs against the existing profile, reviewed before applying. |
-| **Resume** | Live preview and one-click PDF generated straight from the profile. |
-| **Portfolio** | Token-authenticated JSON endpoint for any external site, plus a change webhook so the site revalidates only what changed. |
+| **Resume** (optional module) | Live preview and one-click PDF generated from the items marked *on resume*. |
+| **Portfolio** (optional module) | Publishes the items marked *on portfolio* to a token-authenticated JSON endpoint, with optional auto-sync on approval, manual publish, and a change webhook so the site revalidates only what changed. |
 | **Sync** | Review queue for GitHub repo scans and for edits pushed back from the portfolio. |
 
 ## A typical flow
@@ -77,13 +110,15 @@ local model, so career data never has to leave the user's machine.
 1. Sign in with a magic link. A profile is created automatically.
 2. Fill in the profile once, by hand, or let a GitHub scan propose
    existing public repos as projects.
-3. Point the portfolio site at `/api/profile?token=...` and set a webhook.
-4. From then on, drop a one-line note in **Updates** whenever something
-   changes. Approve the drafted diff.
-5. The resume PDF is current immediately. The portfolio gets a webhook
-   and revalidates the affected section.
+3. Turn on the modules you need: Resume, Portfolio, or both.
+4. If using the portfolio, point the site at `/api/portfolio?token=...`,
+   set a webhook, and choose whether approvals auto-sync.
+5. From then on, drop a one-line note in **Updates** whenever something
+   changes. Approve the drafted diff, with sync to portfolio on or off.
+6. The resume PDF is current immediately. The portfolio updates either
+   at once (auto-sync) or the next time you publish.
 
-## What Loom is not
+## What Syncfolio is not
 
 - Not a resume template marketplace or a design tool.
 - Not a portfolio site builder or host.
