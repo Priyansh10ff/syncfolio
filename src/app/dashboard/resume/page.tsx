@@ -8,13 +8,13 @@ export default async function ResumePage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl mb-1">Resume</h1>
-          <p className="text-sm text-[var(--loom-muted)]">
+          <p className="text-sm text-[var(--sf-muted)]">
             Generated straight from your profile — edit it there, not here.
           </p>
         </div>
         <a
           href="/api/resume/pdf"
-          className="bg-[var(--loom-thread)] text-white rounded px-4 py-2 text-sm"
+          className="bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm"
         >
           Download PDF
         </a>

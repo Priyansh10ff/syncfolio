@@ -65,16 +65,16 @@ export default function SyncClient({
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-[var(--loom-muted)] uppercase tracking-wide">
+        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
           GitHub
         </h2>
-        <p className="text-sm text-[var(--loom-muted)]">
+        <p className="text-sm text-[var(--sf-muted)]">
           Scans your public, non-fork repos and proposes new projects for the
           ones not already linked in your profile.
         </p>
         <div className="flex items-center gap-2">
           <input
-            className="flex-1 text-sm border border-[var(--loom-line)] rounded px-3 py-2 bg-white"
+            className="flex-1 text-sm border border-[var(--sf-line)] rounded px-3 py-2 bg-white"
             placeholder="GitHub username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -83,46 +83,46 @@ export default function SyncClient({
           <button
             onClick={scan}
             disabled={scanning || !username.trim()}
-            className="shrink-0 bg-[var(--loom-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
+            className="shrink-0 bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
           >
             {scanning ? "Scanning…" : "Scan now"}
           </button>
         </div>
         {savingUsername && (
-          <p className="text-xs text-[var(--loom-muted)]">Saving…</p>
+          <p className="text-xs text-[var(--sf-muted)]">Saving…</p>
         )}
-        {message && <p className="text-sm text-[var(--loom-muted)]">{message}</p>}
+        {message && <p className="text-sm text-[var(--sf-muted)]">{message}</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-[var(--loom-muted)] uppercase tracking-wide">
+        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
           Pending review
         </h2>
         {pending.length === 0 && (
-          <p className="text-sm text-[var(--loom-muted)]">Nothing waiting on you.</p>
+          <p className="text-sm text-[var(--sf-muted)]">Nothing waiting on you.</p>
         )}
         {pending.map((row) => (
           <div
             key={row.id}
-            className="flex items-center justify-between border border-[var(--loom-line)] rounded px-3 py-2"
+            className="flex items-center justify-between border border-[var(--sf-line)] rounded px-3 py-2"
           >
             <div>
               <div className="text-sm">{row.diff_summary}</div>
-              <div className="text-xs text-[var(--loom-muted)]">
+              <div className="text-xs text-[var(--sf-muted)]">
                 {sourceLabel[row.source] ?? row.source} · {row.target_table}
               </div>
             </div>
             <div className="flex gap-2 text-sm">
               <button
                 onClick={() => resolve(row.id, "approve")}
-                className="text-[var(--loom-thread)] hover:underline"
+                className="text-[var(--sf-thread)] hover:underline"
               >
                 Approve
               </button>
               <button
                 onClick={() => resolve(row.id, "reject")}
-                className="text-[var(--loom-muted)] hover:underline"
+                className="text-[var(--sf-muted)] hover:underline"
               >
                 Reject
               </button>

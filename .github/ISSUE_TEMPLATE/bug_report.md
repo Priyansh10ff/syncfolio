@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in Loom isn't working
+about: Something in Syncfolio isn't working
 labels: bug
 ---
 

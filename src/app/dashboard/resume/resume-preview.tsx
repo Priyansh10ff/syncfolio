@@ -7,7 +7,7 @@ import { ResumeDocument } from "@/lib/resume/template";
 export default function ResumePreview({ profile }: { profile: Profile }) {
   if (!profile.name) {
     return (
-      <p className="text-sm text-[var(--loom-muted)]">
+      <p className="text-sm text-[var(--sf-muted)]">
         Add your name and a bit of experience on the Profile page to see a preview here.
       </p>
     );

@@ -57,7 +57,7 @@ export default function UpdatesClient({
   return (
     <div className="flex flex-col gap-8">
       {notConfigured && (
-        <div className="text-sm border border-[var(--loom-line)] rounded px-3 py-2 bg-[var(--loom-thread-soft)]">
+        <div className="text-sm border border-[var(--sf-line)] rounded px-3 py-2 bg-[var(--sf-thread-soft)]">
           AI updates need a model provider configured — Claude, GPT, Gemini, or a
           local model. See the Configuration section in the README. Until then,
           add and edit everything by hand on the{" "}
@@ -69,7 +69,7 @@ export default function UpdatesClient({
       )}
       <div className="flex flex-col gap-2">
         <textarea
-          className="border border-[var(--loom-line)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[var(--loom-thread)]"
+          className="border border-[var(--sf-line)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[var(--sf-thread)]"
           rows={3}
           placeholder="e.g. Added Redis caching to Patchwork, cut p95 latency 40%"
           value={note}
@@ -78,42 +78,42 @@ export default function UpdatesClient({
         <button
           onClick={submit}
           disabled={loading || !note.trim()}
-          className="self-start bg-[var(--loom-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
+          className="self-start bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
         >
           {loading ? "Thinking…" : "Draft update"}
         </button>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {clarification && (
-          <p className="text-sm text-[var(--loom-muted)]">{clarification}</p>
+          <p className="text-sm text-[var(--sf-muted)]">{clarification}</p>
         )}
       </div>
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-[var(--loom-muted)] uppercase tracking-wide">
+        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
           Pending review
         </h2>
         {pending.length === 0 && (
-          <p className="text-sm text-[var(--loom-muted)]">Nothing waiting on you.</p>
+          <p className="text-sm text-[var(--sf-muted)]">Nothing waiting on you.</p>
         )}
         {pending.map((row) => (
           <div
             key={row.id}
-            className="flex items-center justify-between border border-[var(--loom-line)] rounded px-3 py-2"
+            className="flex items-center justify-between border border-[var(--sf-line)] rounded px-3 py-2"
           >
             <div>
               <div className="text-sm">{row.diff_summary}</div>
-              <div className="text-xs text-[var(--loom-muted)]">{row.target_table}</div>
+              <div className="text-xs text-[var(--sf-muted)]">{row.target_table}</div>
             </div>
             <div className="flex gap-2 text-sm">
               <button
                 onClick={() => resolve(row.id, "approve")}
-                className="text-[var(--loom-thread)] hover:underline"
+                className="text-[var(--sf-thread)] hover:underline"
               >
                 Approve
               </button>
               <button
                 onClick={() => resolve(row.id, "reject")}
-                className="text-[var(--loom-muted)] hover:underline"
+                className="text-[var(--sf-muted)] hover:underline"
               >
                 Reject
               </button>

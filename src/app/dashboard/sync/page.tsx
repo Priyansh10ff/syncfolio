@@ -27,7 +27,7 @@ export default async function SyncPage() {
   return (
     <div className="max-w-xl">
       <h1 className="font-display text-2xl mb-1">Sync</h1>
-      <p className="text-sm text-[var(--loom-muted)] mb-8">
+      <p className="text-sm text-[var(--sf-muted)] mb-8">
         Suggestions from your GitHub activity and edits made directly on your
         portfolio. Nothing here writes until you approve it.
       </p>

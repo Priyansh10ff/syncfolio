@@ -1,4 +1,4 @@
-# Contributing to Loom
+# Contributing to Syncfolio
 
 Thanks for taking a look. This is a young project — happy to have help.
 
@@ -48,7 +48,7 @@ anything touching more than one feature area, also run through
 
 - Additional resume templates (swap in `src/lib/resume/template.tsx`,
   or add a template picker)
-- A public read-only portfolio preview page bundled with Loom itself
+- A public read-only portfolio preview page bundled with Syncfolio itself
   (currently intentionally left out — bring-your-own-portfolio is the
   default)
 - More GitHub-scan signal (README-derived bullets, commit-based metrics)

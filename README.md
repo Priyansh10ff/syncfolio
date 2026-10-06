@@ -1,8 +1,8 @@
-# Loom
+# Syncfolio
 
 Tell it what changed once. Your resume and portfolio update themselves.
 
-Loom is a dashboard backed by one profile — experience, projects, skills,
+Syncfolio is a dashboard backed by one profile — experience, projects, skills,
 education. Everything else reads from or writes to that one place: a
 generated resume PDF, your existing portfolio (any stack), and an AI layer
 that turns a casual note into a structured update. Nothing writes to your
@@ -11,7 +11,7 @@ real data without you approving it first.
 ## Features
 
 - **Profile** — the source of truth. Add, edit, and delete everything by
-  hand; nothing else in Loom requires this to work any differently.
+  hand; nothing else in Syncfolio requires this to work any differently.
 - **Updates** — type what changed in plain English ("shipped Redis caching
   on Patchwork, cut p95 latency 40%"). An LLM matches it against your
   existing data and drafts a diff. You approve or reject before anything
@@ -42,8 +42,8 @@ works with no AI provider configured at all.
 ## Quick start
 
 ```bash
-git clone <your-fork-url> loom
-cd loom
+git clone <your-fork-url> syncfolio
+cd syncfolio
 npm install
 cp .env.example .env.local   # fill in at least the two Supabase values
 npm run dev
@@ -124,7 +124,8 @@ src/
     api/updates/pending/       → list unresolved diffs
     api/resume/pdf/            → GET: renders the profile to a downloadable PDF
     api/sync/github-scan/      → POST: scan public repos, queue new-project proposals
-    auth/callback/             → magic-link session exchange
+    auth/callback/             → magic-link session exchange, creates the profile row
+    auth/signout/              → POST: sign out
     dashboard/                 → profile editor, AI updates, resume preview, portfolio settings, sync queue
     login/                     → email sign-in
   lib/
@@ -137,7 +138,8 @@ src/
     webhook.ts                  → fires the configured webhook after a write
     supabase/                   → server, browser, and admin (service-role) clients
     profile.ts                  → assembles Profile from Supabase tables, by session or public token
-supabase/schema.sql             → Postgres schema + RLS policies
+supabase/schema.sql             → Postgres schema + RLS policies (fresh setups)
+supabase/migrations/            → incremental changes for existing databases
 docs/
   DEPLOYMENT.md                 → step-by-step: local setup, hosted deploy, going to production
   TESTING.md                    → manual test pass for every feature before you ship
@@ -157,7 +159,7 @@ docs/
 - Resume rendering uses `@react-pdf/renderer` (pure JS) instead of
   LaTeX/Typst — no binary to install, so it works on serverless deploys
   like Vercel out of the box.
-- No portfolio app is bundled here on purpose — Loom is portfolio-agnostic
+- No portfolio app is bundled here on purpose — Syncfolio is portfolio-agnostic
   by design. Point any existing site (any framework) at `/api/profile`.
 - `pending_updates` is the one write path for anything automated. If
   you're adding a new suggestion source, write to that table, not

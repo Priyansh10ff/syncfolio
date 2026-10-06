@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     end_date: body.end_date ?? null,
     bullets: body.bullets ?? [],
     tags: body.tags ?? [],
-    source: "loom",
+    source: "manual",
     updated_at: new Date().toISOString(),
   });
 

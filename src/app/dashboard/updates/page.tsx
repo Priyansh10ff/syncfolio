@@ -22,7 +22,7 @@ export default async function UpdatesPage() {
   return (
     <div className="max-w-xl">
       <h1 className="font-display text-2xl mb-1">Updates</h1>
-      <p className="text-sm text-[var(--loom-muted)] mb-8">
+      <p className="text-sm text-[var(--sf-muted)] mb-8">
         Tell it what changed. It drafts the update — you approve before anything is saved.
       </p>
       <UpdatesClient initialPending={pending} />

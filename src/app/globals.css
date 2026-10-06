@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --loom-ink: #1c1b1a;
-  --loom-paper: #faf9f6;
-  --loom-thread: #b5622a;
-  --loom-thread-soft: #e9d9c8;
-  --loom-line: #dedad2;
-  --loom-muted: #6b6660;
+  --sf-ink: #1c1b1a;
+  --sf-paper: #faf9f6;
+  --sf-thread: #b5622a;
+  --sf-thread-soft: #e9d9c8;
+  --sf-line: #dedad2;
+  --sf-muted: #6b6660;
 }
 
 body {
-  background: var(--loom-paper);
-  color: var(--loom-ink);
+  background: var(--sf-paper);
+  color: var(--sf-ink);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 

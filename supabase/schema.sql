@@ -1,5 +1,5 @@
--- Loom Phase 1 schema
--- One user = one profile for now (multi-user comes later if needed).
+-- Syncfolio schema
+-- One auth user owns exactly one profile.
 
 create table if not exists profiles (
   id uuid primary key default gen_random_uuid(),
@@ -28,7 +28,7 @@ create table if not exists experience (
   end_date text,
   bullets jsonb not null default '[]',
   tags jsonb not null default '[]',
-  source text not null default 'loom' check (source in ('loom', 'external', 'ai')),
+  source text not null default 'manual' check (source in ('manual', 'external', 'ai')),
   updated_at timestamptz not null default now()
 );
 
@@ -42,7 +42,7 @@ create table if not exists projects (
   tags jsonb not null default '[]',
   metrics jsonb not null default '[]',
   featured boolean not null default false,
-  source text not null default 'loom' check (source in ('loom', 'external', 'ai')),
+  source text not null default 'manual' check (source in ('manual', 'external', 'ai')),
   updated_at timestamptz not null default now()
 );
 

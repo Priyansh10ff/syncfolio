@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest something for Loom
+about: Suggest something for Syncfolio
 labels: enhancement
 ---
 

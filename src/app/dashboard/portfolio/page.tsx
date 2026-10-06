@@ -23,7 +23,7 @@ export default async function PortfolioPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="font-display text-2xl mb-1">Portfolio</h1>
-      <p className="text-sm text-[var(--loom-muted)] mb-8">
+      <p className="text-sm text-[var(--sf-muted)] mb-8">
         Point your existing portfolio — any stack — at your data. No bundled
         portfolio app here on purpose.
       </p>

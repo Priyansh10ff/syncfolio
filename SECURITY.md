@@ -19,7 +19,7 @@
   log it.
 - **The webhook URL** you configure is called with a small JSON payload
   (`{ section, action, id, changed_at }`) — no profile data, no secrets.
-  Loom does not sign these requests. If you need to verify the sender,
+  Syncfolio does not sign these requests. If you need to verify the sender,
   put a shared-secret query param or header check on your receiving
   endpoint.
 - **`/api/profile/external-sync`** accepts the same public token as

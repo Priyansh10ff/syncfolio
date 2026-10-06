@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Loom",
+  title: "Syncfolio",
   description: "Tell it what changed once. Your resume and portfolio update themselves.",
 };
 

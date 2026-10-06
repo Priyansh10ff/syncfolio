@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Canonical Loom profile shape.
+ * Canonical Syncfolio profile shape.
  * This is the single source of truth's shape — the DB, the /api/profile
  * response, the resume generator, and any external portfolio all read
  * data that conforms to this schema.
@@ -22,7 +22,7 @@ export const experienceSchema = z.object({
   bullets: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   updated_at: z.string(),
-  source: z.enum(["loom", "external", "ai"]).default("loom"),
+  source: z.enum(["manual", "external", "ai"]).default("manual"),
 });
 
 export const projectSchema = z.object({
@@ -35,7 +35,7 @@ export const projectSchema = z.object({
   metrics: z.array(z.string()).default([]), // e.g. "cut latency 40%"
   featured: z.boolean().default(false),
   updated_at: z.string(),
-  source: z.enum(["loom", "external", "ai"]).default("loom"),
+  source: z.enum(["manual", "external", "ai"]).default("manual"),
 });
 
 export const skillSchema = z.object({

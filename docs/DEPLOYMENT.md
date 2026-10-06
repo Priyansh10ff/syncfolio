@@ -22,7 +22,10 @@ you've smoke-tested locally.
 
 1. In the Supabase dashboard, open **SQL Editor**.
 2. Paste the entire contents of `supabase/schema.sql` and run it.
-3. Confirm under **Table Editor** that `profiles`, `experience`,
+3. If you're upgrading a database created from an older schema instead,
+   run each file in `supabase/migrations/` in order rather than
+   `schema.sql`.
+4. Confirm under **Table Editor** that `profiles`, `experience`,
    `projects`, `skills`, `education`, and `pending_updates` all exist.
 
 ### 1.3 Enable email sign-in
@@ -37,8 +40,8 @@ you've smoke-tested locally.
 ### 1.4 Configure and run
 
 ```bash
-git clone <your-fork-url> loom
-cd loom
+git clone <your-fork-url> syncfolio
+cd syncfolio
 npm install
 cp .env.example .env.local
 ```
@@ -91,7 +94,7 @@ every push and PR — check the Actions tab goes green before continuing.
 
 ### 2.3 Point auth at the deployed URL
 
-1. Copy your Vercel deployment URL (e.g. `https://loom-yourname.vercel.app`).
+1. Copy your Vercel deployment URL (e.g. `https://syncfolio-yourname.vercel.app`).
 2. Back in Supabase **Authentication → URL Configuration**:
    - **Site URL** → your Vercel URL
    - **Redirect URLs** → add `https://<your-domain>/auth/callback`
@@ -127,7 +130,7 @@ Run through this before pointing real traffic at it.
 - [ ] **You've rotated the public token at least once** from
       `/dashboard/portfolio` after initial testing, so any token that
       leaked into logs/screenshots during setup is dead.
-- [ ] **Webhook receiver (if used) validates its caller.** Loom doesn't
+- [ ] **Webhook receiver (if used) validates its caller.** Syncfolio doesn't
       sign webhook payloads (see `SECURITY.md`) — if your portfolio's
       webhook endpoint does anything beyond `revalidatePath`, add your
       own shared-secret check.
@@ -136,6 +139,6 @@ Run through this before pointing real traffic at it.
 - [ ] **AI provider costs are bounded**, if using a paid API — there's
       no built-in rate limiting on `/api/updates/parse` beyond requiring
       a signed-in session. Add rate limiting (e.g. Vercel's or a
-      middleware check) if this will see real multi-user traffic.
+      proxy check) if this will see real multi-user traffic.
 - [ ] **Full manual pass from `docs/TESTING.md`** on the deployed URL,
       not just locally.

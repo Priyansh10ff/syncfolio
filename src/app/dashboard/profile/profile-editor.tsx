@@ -28,7 +28,7 @@ export default function ProfileEditor({ initial }: { initial: Profile }) {
   return (
     <div className="flex flex-col gap-12">
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-[var(--loom-muted)] uppercase tracking-wide">
+        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
           Basics
         </h2>
         <Field
@@ -63,7 +63,7 @@ export default function ProfileEditor({ initial }: { initial: Profile }) {
         <button
           onClick={saveBasics}
           disabled={saving}
-          className="self-start mt-2 rounded bg-[var(--loom-thread)] text-white text-sm px-4 py-2 hover:opacity-90 disabled:opacity-50"
+          className="self-start mt-2 rounded bg-[var(--sf-thread)] text-white text-sm px-4 py-2 hover:opacity-90 disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save basics"}
         </button>
@@ -77,7 +77,7 @@ export default function ProfileEditor({ initial }: { initial: Profile }) {
             <div className="font-medium">
               {e.role} · {e.org}
             </div>
-            <div className="text-xs text-[var(--loom-muted)]">
+            <div className="text-xs text-[var(--sf-muted)]">
               {e.start_date} — {e.end_date ?? "present"}
             </div>
           </>
@@ -105,7 +105,7 @@ export default function ProfileEditor({ initial }: { initial: Profile }) {
         renderItem={(p) => (
           <>
             <div className="font-medium">{p.name}</div>
-            <div className="text-xs text-[var(--loom-muted)]">{p.description}</div>
+            <div className="text-xs text-[var(--sf-muted)]">{p.description}</div>
           </>
         )}
         onDelete={async (id) => {
@@ -161,10 +161,10 @@ function Field({
   textarea?: boolean;
 }) {
   const cls =
-    "border border-[var(--loom-line)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[var(--loom-thread)]";
+    "border border-[var(--sf-line)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[var(--sf-thread)]";
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="text-[var(--loom-muted)]">{label}</span>
+      <span className="text-[var(--sf-muted)]">{label}</span>
       {textarea ? (
         <textarea
           className={cls}
@@ -204,12 +204,12 @@ function EntityList<T extends { id: string }>({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-[var(--loom-muted)] uppercase tracking-wide">
+        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
           {title}
         </h2>
         <button
           onClick={() => setAdding((a) => !a)}
-          className="text-xs text-[var(--loom-thread)] hover:underline"
+          className="text-xs text-[var(--sf-thread)] hover:underline"
         >
           {adding ? "Cancel" : "+ Add"}
         </button>
@@ -225,19 +225,19 @@ function EntityList<T extends { id: string }>({
       )}
 
       {items.length === 0 && !adding && (
-        <p className="text-sm text-[var(--loom-muted)]">Nothing here yet.</p>
+        <p className="text-sm text-[var(--sf-muted)]">Nothing here yet.</p>
       )}
 
       <ul className="flex flex-col gap-2">
         {items.map((item) => (
           <li
             key={item.id}
-            className="flex items-start justify-between border border-[var(--loom-line)] rounded px-3 py-2"
+            className="flex items-start justify-between border border-[var(--sf-line)] rounded px-3 py-2"
           >
             <div>{renderItem(item)}</div>
             <button
               onClick={() => onDelete(item.id)}
-              className="text-[var(--loom-muted)] hover:text-[var(--loom-thread)]"
+              className="text-[var(--sf-muted)] hover:text-[var(--sf-thread)]"
               aria-label="Delete"
             >
               <Trash2 size={14} />
@@ -270,35 +270,35 @@ function AddExperienceForm({ onAdded }: { onAdded: (row: Profile["experience"][n
         end_date: null,
         bullets: [],
         tags: [],
-        source: "loom",
+        source: "manual",
         updated_at: new Date().toISOString(),
       });
     }
   }
 
   return (
-    <div className="flex gap-2 flex-wrap items-end border border-dashed border-[var(--loom-line)] rounded p-3">
+    <div className="flex gap-2 flex-wrap items-end border border-dashed border-[var(--sf-line)] rounded p-3">
       <input
-        className="border border-[var(--loom-line)] rounded px-2 py-1 text-sm"
+        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
         placeholder="Role"
         value={role}
         onChange={(e) => setRole(e.target.value)}
       />
       <input
-        className="border border-[var(--loom-line)] rounded px-2 py-1 text-sm"
+        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
         placeholder="Org"
         value={org}
         onChange={(e) => setOrg(e.target.value)}
       />
       <input
-        className="border border-[var(--loom-line)] rounded px-2 py-1 text-sm"
+        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
         placeholder="YYYY-MM"
         value={start}
         onChange={(e) => setStart(e.target.value)}
       />
       <button
         onClick={submit}
-        className="text-sm bg-[var(--loom-thread)] text-white rounded px-3 py-1"
+        className="text-sm bg-[var(--sf-thread)] text-white rounded px-3 py-1"
       >
         Add
       </button>
@@ -327,29 +327,29 @@ function AddProjectForm({ onAdded }: { onAdded: (row: Profile["projects"][number
         tags: [],
         metrics: [],
         featured: false,
-        source: "loom",
+        source: "manual",
         updated_at: new Date().toISOString(),
       });
     }
   }
 
   return (
-    <div className="flex gap-2 flex-wrap items-end border border-dashed border-[var(--loom-line)] rounded p-3">
+    <div className="flex gap-2 flex-wrap items-end border border-dashed border-[var(--sf-line)] rounded p-3">
       <input
-        className="border border-[var(--loom-line)] rounded px-2 py-1 text-sm"
+        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
         placeholder="Project name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       <input
-        className="border border-[var(--loom-line)] rounded px-2 py-1 text-sm flex-1 min-w-[200px]"
+        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm flex-1 min-w-[200px]"
         placeholder="One-line description"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
       <button
         onClick={submit}
-        className="text-sm bg-[var(--loom-thread)] text-white rounded px-3 py-1"
+        className="text-sm bg-[var(--sf-thread)] text-white rounded px-3 py-1"
       >
         Add
       </button>
@@ -374,16 +374,16 @@ function AddSkillForm({ onAdded }: { onAdded: (row: Profile["skills"][number]) =
   }
 
   return (
-    <div className="flex gap-2 items-end border border-dashed border-[var(--loom-line)] rounded p-3">
+    <div className="flex gap-2 items-end border border-dashed border-[var(--sf-line)] rounded p-3">
       <input
-        className="border border-[var(--loom-line)] rounded px-2 py-1 text-sm"
+        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
         placeholder="Skill"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       <button
         onClick={submit}
-        className="text-sm bg-[var(--loom-thread)] text-white rounded px-3 py-1"
+        className="text-sm bg-[var(--sf-thread)] text-white rounded px-3 py-1"
       >
         Add
       </button>

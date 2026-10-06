@@ -34,15 +34,17 @@ and the rules the codebase follows. For the why and the who, see
 │   └── TESTING.md                manual test pass
 ├── public/                       static assets
 ├── supabase/
-│   └── schema.sql                tables, constraints, RLS policies
+│   ├── schema.sql                tables, constraints, RLS policies (fresh setups)
+│   └── migrations/               incremental changes for existing databases
 ├── src/
-│   ├── middleware.ts             refreshes the Supabase session; guards /dashboard
+│   ├── proxy.ts                  refreshes the Supabase session; guards /dashboard and /login
 │   ├── app/
 │   │   ├── page.tsx              landing page
 │   │   ├── layout.tsx            root layout
 │   │   ├── globals.css           Tailwind + theme tokens
 │   │   ├── login/                magic-link sign-in
 │   │   ├── auth/callback/        code → session exchange, creates profile row
+│   │   ├── auth/signout/         POST: end session
 │   │   ├── dashboard/
 │   │   │   ├── layout.tsx        sidebar nav + sign out
 │   │   │   ├── profile/          manual editor (source of truth)
@@ -74,11 +76,13 @@ and the rules the codebase follows. For the why and the who, see
 │   └── lib/
 │       ├── schema/
 │       │   ├── profile.ts        canonical Profile shape (zod)
+│       │   ├── editable-fields.ts per-table column allowlist for proposals
 │       │   └── pending-update-row.ts
 │       ├── profile.ts            assemble live Profile; ensureProfile
 │       ├── modules.ts            module flags; resume/portfolio views of a Profile
 │       ├── portfolio/publish.ts  build snapshot, diff vs last, fire webhook
 │       ├── current-profile-id.ts resolve signed-in user's profile id
+│       ├── safe-next.ts          validates post-login redirect paths
 │       ├── webhook.ts            fire-and-forget change notification
 │       ├── ai/
 │       │   ├── parse-update.ts   system prompt + profile summary + JSON parse
@@ -256,7 +260,7 @@ Sent once per publish:
 
 - **Session auth.** Magic link → `/auth/callback` exchanges the code,
   creates the `profiles` row if missing, then redirects to the dashboard.
-  Middleware refreshes the session on every request and redirects
+  `proxy.ts` refreshes the session on every request and redirects
   unauthenticated `/dashboard` visits to `/login`.
 - **RLS.** Every table allows access only where
   `auth.uid()` owns the parent profile. The server client runs as the
