@@ -1,19 +1,13 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfileId } from "@/lib/current-profile-id";
+import { authed, dbFail } from "@/lib/api/route";
 
-export async function GET() {
-  const profileId = await getCurrentProfileId();
-  if (!profileId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
+/** GET /api/updates/pending — unresolved proposals from every source. */
+export const GET = authed(async (ctx) => {
+  const { data, error } = await ctx.supabase
     .from("pending_updates")
     .select("*")
-    .eq("profile_id", profileId)
+    .eq("profile_id", ctx.profileId)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ pending: data });
-}
+  dbFail(error);
+  return { pending: data };
+});

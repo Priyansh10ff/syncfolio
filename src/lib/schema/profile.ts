@@ -1,10 +1,9 @@
 import { z } from "zod";
 
 /**
- * Canonical Syncfolio profile shape.
- * This is the single source of truth's shape — the DB, the /api/profile
- * response, the resume generator, and any external portfolio all read
- * data that conforms to this schema.
+ * Canonical Syncfolio profile shape — the live source of truth.
+ * The DB, the dashboard, and the resume/portfolio views in
+ * `lib/modules.ts` all derive from data that conforms to this schema.
  */
 
 export const linkSchema = z.object({
@@ -12,17 +11,27 @@ export const linkSchema = z.object({
   url: z.string().url(),
 });
 
+const sourceSchema = z.enum(["manual", "external", "ai"]);
+
+/** Visibility + ordering shared by every content row. */
+const placementShape = {
+  show_on_resume: z.boolean().default(true),
+  show_on_portfolio: z.boolean().default(true),
+  sort_order: z.number().int().default(0),
+};
+
 export const experienceSchema = z.object({
   id: z.string(),
   role: z.string(),
   org: z.string(),
-  location: z.string().optional(),
-  start_date: z.string(), // ISO "YYYY-MM"
+  location: z.string().nullish(),
+  start_date: z.string(), // "YYYY-MM"
   end_date: z.string().nullable(), // null = present
   bullets: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   updated_at: z.string(),
-  source: z.enum(["manual", "external", "ai"]).default("manual"),
+  source: sourceSchema.default("manual"),
+  ...placementShape,
 });
 
 export const projectSchema = z.object({
@@ -35,23 +44,30 @@ export const projectSchema = z.object({
   metrics: z.array(z.string()).default([]), // e.g. "cut latency 40%"
   featured: z.boolean().default(false),
   updated_at: z.string(),
-  source: z.enum(["manual", "external", "ai"]).default("manual"),
+  source: sourceSchema.default("manual"),
+  ...placementShape,
+  // Portfolio-only
+  slug: z.string().nullish(),
+  long_description: z.string().nullish(),
+  cover_image_url: z.string().nullish(),
 });
 
 export const skillSchema = z.object({
   id: z.string(),
   name: z.string(),
-  category: z.string().optional(), // e.g. "language", "framework", "tool"
-  level: z.enum(["learning", "comfortable", "strong"]).optional(),
+  category: z.string().nullish(), // e.g. "language", "framework", "tool"
+  level: z.enum(["learning", "comfortable", "strong"]).nullish(),
+  ...placementShape,
 });
 
 export const educationSchema = z.object({
   id: z.string(),
   institution: z.string(),
-  degree: z.string().optional(),
+  degree: z.string().nullish(),
   start_date: z.string(),
   end_date: z.string().nullable(),
-  notes: z.string().optional(),
+  notes: z.string().nullish(),
+  ...placementShape,
 });
 
 export const profileSchema = z.object({
@@ -68,12 +84,26 @@ export const profileSchema = z.object({
   updated_at: z.string(),
 });
 
+/** Per-profile settings — which modules are on, and the auto-sync default. */
+export const profileSettingsSchema = z.object({
+  resume_enabled: z.boolean(),
+  portfolio_enabled: z.boolean(),
+  portfolio_auto_sync: z.boolean(),
+});
+
 export type Link = z.infer<typeof linkSchema>;
 export type Experience = z.infer<typeof experienceSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type Skill = z.infer<typeof skillSchema>;
 export type Education = z.infer<typeof educationSchema>;
 export type Profile = z.infer<typeof profileSchema>;
+export type ProfileSettings = z.infer<typeof profileSettingsSchema>;
+
+export const DEFAULT_SETTINGS: ProfileSettings = {
+  resume_enabled: true,
+  portfolio_enabled: true,
+  portfolio_auto_sync: true,
+};
 
 export function emptyProfile(): Profile {
   return {

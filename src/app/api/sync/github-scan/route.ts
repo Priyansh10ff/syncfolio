@@ -1,47 +1,36 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfileId } from "@/lib/current-profile-id";
-import { getProfile } from "@/lib/profile";
+import { authed, dbFail, HttpError } from "@/lib/api/route";
+import { loadProfile } from "@/lib/profile";
 import { fetchPublicRepos, diffReposAgainstProfile } from "@/lib/github/scan";
 
-export async function POST() {
-  const profileId = await getCurrentProfileId();
-  if (!profileId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-
-  const supabase = await createClient();
+/** POST /api/sync/github-scan — queue new public repos as project proposals. */
+export const POST = authed(async (ctx) => {
+  const { supabase, profileId } = ctx;
   const { data: profileRow } = await supabase
     .from("profiles")
     .select("github_username")
     .eq("id", profileId)
     .single();
 
-  if (!profileRow?.github_username) {
-    return NextResponse.json(
-      { error: "Add a GitHub username first." },
-      { status: 400 }
-    );
-  }
+  if (!profileRow?.github_username) throw new HttpError(400, "Add a GitHub username first.");
 
   let repos;
   try {
     repos = await fetchPublicRepos(profileRow.github_username);
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "GitHub scan failed" },
-      { status: 502 }
-    );
+    throw new HttpError(502, err instanceof Error ? err.message : "GitHub scan failed");
   }
 
-  const profile = await getProfile();
-  const proposals = diffReposAgainstProfile(repos, profile);
+  const loaded = await loadProfile(supabase, profileId);
+  if (!loaded) throw new HttpError(404, "Profile not found");
+  const proposals = diffReposAgainstProfile(repos, loaded.profile);
 
-  // Skip repos already sitting in the pending queue from an earlier scan.
+  // Skip repos already queued, or already rejected, from an earlier scan.
   const { data: alreadyQueued } = await supabase
     .from("pending_updates")
     .select("payload")
     .eq("profile_id", profileId)
     .eq("source", "github_scan")
-    .eq("status", "pending");
+    .in("status", ["pending", "rejected"]);
 
   const queuedUrls = new Set(
     (alreadyQueued ?? [])
@@ -58,7 +47,7 @@ export async function POST() {
   });
 
   if (freshProposals.length === 0) {
-    return NextResponse.json({ pending: [], message: "Nothing new since last scan." });
+    return { pending: [], message: "Nothing new since last scan." };
   }
 
   const rows = freshProposals.map((p) => ({
@@ -71,7 +60,6 @@ export async function POST() {
   }));
 
   const { data, error } = await supabase.from("pending_updates").insert(rows).select();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ pending: data });
-}
+  dbFail(error);
+  return { pending: data };
+});

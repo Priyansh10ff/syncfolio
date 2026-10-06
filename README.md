@@ -12,16 +12,18 @@ real data without you approving it first.
 
 - **Profile** — the source of truth. Add, edit, and delete everything by
   hand; nothing else in Syncfolio requires this to work any differently.
+  Each row has two switches: show on resume, show on portfolio.
 - **Updates** — type what changed in plain English ("shipped Redis caching
   on Patchwork, cut p95 latency 40%"). An LLM matches it against your
   existing data and drafts a diff. You approve or reject before anything
-  is written.
-- **Resume** — a live preview and a one-click PDF, generated straight from
-  your profile. No template file to keep in sync by hand.
-- **Portfolio** — a public, token-authenticated JSON endpoint
-  (`/api/profile`) any framework can read, plus a webhook that fires with
-  exactly what changed so your site can revalidate one page instead of
-  rebuilding everything.
+  is written, and can undo the last approval.
+- **Resume** (optional module) — a live preview and a one-click PDF,
+  generated from the rows marked for the resume.
+- **Portfolio** (optional module) — publishes the rows marked for the
+  portfolio to a token-authenticated JSON endpoint (`/api/portfolio`) any
+  framework can read. Approved updates can auto-sync, or wait until you
+  publish. A webhook fires once per publish listing what changed, so your
+  site revalidates only those pages.
 - **Sync** — the review queue for anything that isn't manual editing or an
   AI-chat update: a scan of your public GitHub repos proposing new
   projects, and an inbound endpoint for edits made directly on your
@@ -63,24 +65,22 @@ examples: [`.env.example`](.env.example).
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Everything — auth, database |
 | `AI_PROVIDER` + one provider's keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `LOCAL_AI_BASE_URL`/`LOCAL_AI_MODEL`) | No | `/dashboard/updates` natural-language parsing |
-| `SUPABASE_SERVICE_ROLE_KEY` | No | Public `/api/profile?token=` reads, `/api/profile/external-sync` |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Public `/api/portfolio?token=` reads, `/api/profile/external-sync` |
 | GitHub username (set in-app on `/dashboard/sync`) | No | GitHub repo scanning — no key needed, public API only |
 
 ## How data flows
 
 ```
                       ┌─────────────┐
-  you, by hand ───────▶             │
-                      │   Profile    │──▶ /dashboard/resume ──▶ PDF
-  AI chat (any model)─▶  (Postgres,  │
-       ▲              │   Supabase)  │──▶ /api/profile?token= ──▶ your portfolio (any stack)
-       │              │             │          │
-  GitHub scan ─────────▶             │          ▼
-       ▲              └─────────────┘     webhook on change
-       │                     ▲            (revalidate one page,
-  external edit ─────────────┘             not a full rebuild)
-  (from your portfolio,
-   via /api/profile/external-sync)
+  you, by hand ───────▶             │──▶ resume view ──▶ /dashboard/resume ──▶ PDF
+                      │   Profile    │
+  AI chat (any model)─▶   (live)     │──▶ portfolio view ──▶ publish ──▶ snapshot
+       ▲              │             │     (auto on approval,        │
+  GitHub scan ─────────▶             │      or manual)               ├─▶ /api/portfolio?token=
+       ▲              └─────────────┘                               └─▶ webhook (once per publish)
+       │                     ▲
+  external edit ─────────────┘
+  (from your portfolio, via /api/profile/external-sync)
 ```
 
 AI chat, GitHub scan, and external edits never write directly — they all
@@ -89,19 +89,21 @@ land in `pending_updates` and go through `/dashboard/updates` or
 
 ## API reference
 
-**`GET /api/profile`** — the full profile as JSON. Signed-in requests
-return your own profile; `?token=<public_token>` (shown on
-`/dashboard/portfolio`) authenticates an external site with no session.
+**`GET /api/portfolio?token=<public_token>`** — the latest published
+portfolio as JSON, for external sites with no session. Returns only rows
+marked for the portfolio. 404 until you publish once. (Old
+`/api/profile?token=` links redirect here.)
 
-**Webhook** (configured on `/dashboard/portfolio`) — POSTed after every
-write: `{ section, action, id?, changed_at }`. `section` is one of
-`profile | experience | projects | skills | education`; `action` is
-`create | update | delete`. Use it to call `revalidatePath` (or
-equivalent) for just that section instead of rebuilding the whole site.
+**Webhook** (configured on `/dashboard/portfolio`) — POSTed once per
+publish: `{ published_at, changes: [{ section, action, id? }] }`.
+`section` is one of `profile | experience | projects | skills | education`;
+`action` is `create | update | delete`. Use it to call `revalidatePath`
+(or equivalent) for just those sections instead of rebuilding the site.
 
 **`POST /api/profile/external-sync`** — the other direction. Body:
-`{ token, changes: [{ target_table, action, target_id, payload, diff_summary }] }`.
-Queues each change for review on `/dashboard/sync`; never writes directly.
+`{ token, changes: [{ target_table, action, target_id, payload, diff_summary }] }`
+(`action`: `create | update | delete`, max 50 changes). Queues each change
+for review on `/dashboard/sync`; never writes directly.
 
 Full route list: [Repo structure](#repo-structure) below.
 
@@ -110,18 +112,25 @@ Full route list: [Repo structure](#repo-structure) below.
 ```
 src/
   app/
-    api/profile/               → GET: full profile as JSON (session or ?token=)
+    api/profile/               → GET: live profile + settings (session)
+    api/portfolio/             → GET: published portfolio (?token=)
+    api/portfolio/pending/     → GET: unpublished changes
+    api/portfolio/publish/     → POST: publish a snapshot, fire the webhook
+    api/settings/              → GET / PATCH: modules and auto-sync default
     api/profile/basics/        → PATCH: name, headline, summary, links
     api/profile/webhook/       → PATCH: save the publish webhook URL
     api/profile/token/         → POST: rotate the public read token
     api/profile/github/        → PATCH: save the GitHub username to scan
     api/profile/external-sync/ → POST: external edits → pending queue
-    api/experience/            → POST / DELETE
-    api/projects/              → POST / DELETE
-    api/skills/                → POST / DELETE
+    api/experience/            → POST / PATCH / DELETE
+    api/projects/              → POST / PATCH / DELETE
+    api/skills/                → POST / PATCH / DELETE
+    api/education/             → POST / PATCH / DELETE
     api/updates/parse/         → note → proposed diffs (via configured AI provider)
     api/updates/apply/         → approve/reject a pending diff (any source)
     api/updates/pending/       → list unresolved diffs
+    api/updates/undo/          → POST: undo the most recent approval
+    api/updates/history/       → GET: recently resolved diffs
     api/resume/pdf/            → GET: renders the profile to a downloadable PDF
     api/sync/github-scan/      → POST: scan public repos, queue new-project proposals
     auth/callback/             → magic-link session exchange, creates the profile row
@@ -135,7 +144,11 @@ src/
     ai/providers/               → Anthropic, OpenAI, Gemini, local, custom — pick at runtime
     resume/template.tsx        → the resume layout, shared by preview and PDF download
     github/scan.ts              → fetch public repos, diff against existing projects
-    webhook.ts                  → fires the configured webhook after a write
+    webhook.ts                  → fires the configured webhook after a publish
+    modules.ts                  → resume view and portfolio view of the profile
+    portfolio/publish.ts        → diff vs last snapshot, publish, webhook
+    updates/apply.ts            → apply / revert a proposal (allowlisted fields)
+    api/                        → route helpers: auth, body parsing, CRUD factory
     supabase/                   → server, browser, and admin (service-role) clients
     profile.ts                  → assembles Profile from Supabase tables, by session or public token
 supabase/schema.sql             → Postgres schema + RLS policies (fresh setups)
@@ -160,7 +173,7 @@ docs/
   LaTeX/Typst — no binary to install, so it works on serverless deploys
   like Vercel out of the box.
 - No portfolio app is bundled here on purpose — Syncfolio is portfolio-agnostic
-  by design. Point any existing site (any framework) at `/api/profile`.
+  by design. Point any existing site (any framework) at `/api/portfolio`.
 - `pending_updates` is the one write path for anything automated. If
   you're adding a new suggestion source, write to that table, not
   directly to `experience` / `projects` / `skills` / `education` — see

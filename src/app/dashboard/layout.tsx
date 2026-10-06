@@ -1,18 +1,21 @@
 import Link from "next/link";
+import { getSettings } from "@/lib/profile";
 
-const nav = [
-  { href: "/dashboard/profile", label: "Profile" },
-  { href: "/dashboard/updates", label: "Updates" },
-  { href: "/dashboard/resume", label: "Resume" },
-  { href: "/dashboard/portfolio", label: "Portfolio" },
-  { href: "/dashboard/sync", label: "Sync" },
-];
-
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const settings = await getSettings();
+  const nav = [
+    { href: "/dashboard/profile", label: "Profile" },
+    { href: "/dashboard/updates", label: "Updates" },
+    ...(settings.resume_enabled ? [{ href: "/dashboard/resume", label: "Resume" }] : []),
+    ...(settings.portfolio_enabled ? [{ href: "/dashboard/portfolio", label: "Portfolio" }] : []),
+    { href: "/dashboard/sync", label: "Sync" },
+    { href: "/dashboard/settings", label: "Settings" },
+  ];
+
   return (
     <div className="min-h-screen flex">
       <aside className="w-56 shrink-0 border-r border-[var(--sf-line)] px-5 py-6 flex flex-col gap-8">

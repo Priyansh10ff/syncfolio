@@ -25,7 +25,7 @@ update box and the public/external-sync endpoints respectively — see
   of the app.
 - **The `Profile` zod schema in `src/lib/schema/profile.ts` is the
   contract.** If you change its shape, update `supabase/schema.sql`,
-  the resume template, and the `/api/profile` consumers together.
+  the resume template, and the `/api/portfolio` consumers together.
 - **AI providers are interchangeable.** `src/lib/ai/providers/` defines
   one `AIProvider` interface (`complete({ system, user, maxTokens })`);
   `parse-update.ts` doesn't know or care which one is active. Adding a

@@ -77,8 +77,13 @@ and the rules the codebase follows. For the why and the who, see
 │       ├── schema/
 │       │   ├── profile.ts        canonical Profile shape (zod)
 │       │   ├── editable-fields.ts per-table column allowlist for proposals
+│       │   ├── inputs.ts         zod schemas for every request body
 │       │   └── pending-update-row.ts
-│       ├── profile.ts            assemble live Profile; ensureProfile
+│       ├── profile.ts            load live Profile + settings; ensureProfile
+│       ├── api/
+│       │   ├── route.ts          authed()/open() wrappers, parseBody, HttpError
+│       │   └── content-routes.ts POST/PATCH/DELETE factory for content tables
+│       ├── updates/apply.ts      apply / revert proposals, optional auto-sync
 │       ├── modules.ts            module flags; resume/portfolio views of a Profile
 │       ├── portfolio/publish.ts  build snapshot, diff vs last, fire webhook
 │       ├── current-profile-id.ts resolve signed-in user's profile id
@@ -122,7 +127,7 @@ auth.users 1──1 profiles 1──* experience
 | `projects` | `name`, `description`, `bullets`, `links`, `tags`, `metrics` (all jsonb), `featured`, `source`, `show_on_resume`, `show_on_portfolio`, portfolio-only: `slug`, `long_description` (markdown), `cover_image_url` |
 | `skills` | `name`, `category`, `level` (`learning` / `comfortable` / `strong`), `show_on_resume`, `show_on_portfolio` |
 | `education` | `institution`, `degree`, `start_date`, `end_date`, `notes`, `show_on_resume`, `show_on_portfolio` |
-| `pending_updates` | `source` (`ai_chat` / `github_scan` / `external_sync`), `target_table`, `payload` jsonb, `diff_summary`, `status` (`pending` / `approved` / `rejected`) |
+| `pending_updates` | `source` (`ai_chat` / `github_scan` / `external_sync`), `target_table`, `payload` jsonb, `diff_summary`, `status` (`pending` / `approved` / `rejected` / `undone`), `applied_row_id`, `previous` jsonb, `resolved_at` |
 | `portfolio_snapshots` | `data` jsonb (the published portfolio view), `published_at`, `changes` jsonb (what differed from the previous snapshot) |
 
 ### Two modules, one profile
@@ -141,7 +146,9 @@ auth.users 1──1 profiles 1──* experience
 
 `source` on content rows records where a row came from (`manual`, `ai`,
 `external`). `pending_updates.payload` carries the proposed fields plus
-two control keys, `__action` (`create` / `update`) and `__target_id`.
+two control keys, `__action` (`create` / `update` / `delete`) and
+`__target_id`. On approval, `applied_row_id` and `previous` (the full row
+before an update or delete) are recorded so the change can be undone.
 
 The TypeScript mirror of this model is `src/lib/schema/profile.ts`, with
 `ResumeView` and `PortfolioView` derived from it in `lib/modules.ts`.
@@ -191,7 +198,7 @@ Token routes use the service-role client and look the profile up by
 | GET | `/api/portfolio` | `?token=` | Latest published portfolio snapshot |
 | GET | `/api/portfolio/pending` | session | Unpublished changes (live view vs last snapshot) |
 | POST | `/api/portfolio/publish` | session | Publish a new snapshot and fire the webhook |
-| PATCH | `/api/settings` | session | `resume_enabled`, `portfolio_enabled`, `portfolio_auto_sync` |
+| GET / PATCH | `/api/settings` | session | `resume_enabled`, `portfolio_enabled`, `portfolio_auto_sync` (one module must stay on) |
 | PATCH | `/api/profile/basics` | session | Update name, headline, summary, location, email, links |
 | POST | `/api/profile/token` | session | Rotate public token |
 | PATCH | `/api/profile/webhook` | session | Set webhook URL |
@@ -203,6 +210,8 @@ Token routes use the service-role client and look the profile up by
 | POST / PATCH / DELETE | `/api/education` | session | CRUD |
 | POST | `/api/updates/parse` | session | Note → proposed diffs |
 | GET | `/api/updates/pending` | session | Unresolved diffs |
+| GET | `/api/updates/history` | session | 50 most recently resolved diffs |
+| POST | `/api/updates/undo` | session | `{ id, sync_portfolio? }` — reverts the most recent approval only |
 | POST | `/api/updates/apply` | session | `{ id, decision: "approve" \| "reject", sync_portfolio?: boolean }` (defaults to `portfolio_auto_sync`) |
 | POST | `/api/sync/github-scan` | session | Queue new public repos as projects |
 | GET | `/api/resume/pdf` | session | Download resume PDF (resume module) |
@@ -298,8 +307,12 @@ Full commented reference: [`.env.example`](../.env.example).
 
 - **One write path for automation.** New suggestion sources insert into
   `pending_updates`. They never touch content tables directly.
-- **zod at every boundary.** Request bodies, AI output, and sync payloads
-  are parsed before use.
+- **zod at every boundary.** Request bodies (`lib/schema/inputs.ts`), AI
+  output, and sync payloads are parsed before use. Body schemas are
+  `.strict()`, so unknown keys are a 400, not silently written.
+- **Route helpers.** Session routes use `authed()` from `lib/api/route.ts`,
+  which resolves the user, profile id and module settings once and maps
+  `HttpError` to JSON. Throw `HttpError`, don't build error responses by hand.
 - **Optional means optional.** Removing any non-Supabase env var must
   leave the app building and running, with a clear message where a
   feature is off.

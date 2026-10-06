@@ -1,7 +1,12 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { Profile, Link, emptyProfile } from "@/lib/schema/profile";
+import {
+  Profile,
+  Link,
+  emptyProfile,
+  ProfileSettings,
+  DEFAULT_SETTINGS,
+} from "@/lib/schema/profile";
 
 type ProfileRow = {
   id: string;
@@ -10,85 +15,119 @@ type ProfileRow = {
   summary: string | null;
   location: string | null;
   email: string | null;
-  links: Link[] | null;  updated_at: string;
+  links: Link[] | null;
+  updated_at: string;
+  resume_enabled: boolean;
+  portfolio_enabled: boolean;
+  portfolio_auto_sync: boolean;
 };
 
-async function assembleProfile(
-  supabase: SupabaseClient,
-  profileRow: ProfileRow
-): Promise<Profile> {
+/** Loads every content table for a profile, in display order. */
+async function assembleProfile(supabase: SupabaseClient, row: ProfileRow): Promise<Profile> {
   const [{ data: experience }, { data: projects }, { data: skills }, { data: education }] =
     await Promise.all([
       supabase
         .from("experience")
         .select("*")
-        .eq("profile_id", profileRow.id)
+        .eq("profile_id", row.id)
+        .order("sort_order", { ascending: true })
         .order("start_date", { ascending: false }),
       supabase
         .from("projects")
         .select("*")
-        .eq("profile_id", profileRow.id)
+        .eq("profile_id", row.id)
+        .order("sort_order", { ascending: true })
         .order("updated_at", { ascending: false }),
-      supabase.from("skills").select("*").eq("profile_id", profileRow.id),
+      supabase
+        .from("skills")
+        .select("*")
+        .eq("profile_id", row.id)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
       supabase
         .from("education")
         .select("*")
-        .eq("profile_id", profileRow.id)
+        .eq("profile_id", row.id)
+        .order("sort_order", { ascending: true })
         .order("start_date", { ascending: false }),
     ]);
 
   return {
-    name: profileRow.name ?? "",
-    headline: profileRow.headline ?? undefined,
-    summary: profileRow.summary ?? undefined,
-    location: profileRow.location ?? undefined,
-    email: profileRow.email ?? undefined,
-    links: profileRow.links ?? [],
+    name: row.name ?? "",
+    headline: row.headline ?? undefined,
+    summary: row.summary ?? undefined,
+    location: row.location ?? undefined,
+    email: row.email || undefined,
+    links: row.links ?? [],
     experience: experience ?? [],
     projects: projects ?? [],
     skills: skills ?? [],
     education: education ?? [],
-    updated_at: profileRow.updated_at,
+    updated_at: row.updated_at,
   };
 }
 
-/** Loads the signed-in user's own profile (dashboard, resume, internal use). */
-export async function getProfile(): Promise<Profile> {
+function settingsOf(row: ProfileRow): ProfileSettings {
+  return {
+    resume_enabled: row.resume_enabled,
+    portfolio_enabled: row.portfolio_enabled,
+    portfolio_auto_sync: row.portfolio_auto_sync,
+  };
+}
+
+/** The live profile + settings for a known profile id, using the given client. */
+export async function loadProfile(
+  supabase: SupabaseClient,
+  profileId: string
+): Promise<{ profile: Profile; settings: ProfileSettings } | null> {
+  const { data: row } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", profileId)
+    .single<ProfileRow>();
+  if (!row) return null;
+  return { profile: await assembleProfile(supabase, row), settings: settingsOf(row) };
+}
+
+/** The signed-in user's live profile + settings (pages and session routes). */
+export async function getProfileWithSettings(): Promise<{
+  profile: Profile;
+  settings: ProfileSettings;
+}> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) return { profile: emptyProfile(), settings: DEFAULT_SETTINGS };
 
-  if (!user) return emptyProfile();
-
-  const { data: profileRow } = await supabase
+  const { data: row } = await supabase
     .from("profiles")
     .select("*")
     .eq("user_id", user.id)
-    .single();
+    .single<ProfileRow>();
+  if (!row) return { profile: emptyProfile(), settings: DEFAULT_SETTINGS };
 
-  if (!profileRow) return emptyProfile();
-  return assembleProfile(supabase, profileRow);
+  return { profile: await assembleProfile(supabase, row), settings: settingsOf(row) };
 }
 
-/**
- * Loads a profile by its public capability token — no session required.
- * This is what powers the token-authenticated /api/profile read that
- * external portfolio sites use. Returns null if the token doesn't
- * match anything or the service role key isn't configured.
- */
-export async function getProfileByToken(token: string): Promise<Profile | null> {
-  const admin = createAdminClient();
-  if (!admin) return null;
+/** The signed-in user's live profile. */
+export async function getProfile(): Promise<Profile> {
+  return (await getProfileWithSettings()).profile;
+}
 
-  const { data: profileRow } = await admin
+/** The signed-in user's module settings. */
+export async function getSettings(): Promise<ProfileSettings> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return DEFAULT_SETTINGS;
+  const { data } = await supabase
     .from("profiles")
-    .select("*")
-    .eq("public_token", token)
-    .single();
-
-  if (!profileRow) return null;
-  return assembleProfile(admin, profileRow);
+    .select("resume_enabled, portfolio_enabled, portfolio_auto_sync")
+    .eq("user_id", user.id)
+    .single<ProfileSettings>();
+  return data ?? DEFAULT_SETTINGS;
 }
 
 /** Ensures a profiles row exists for the current user, creating one if needed. */

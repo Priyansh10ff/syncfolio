@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { getProfile } from "@/lib/profile";
+import { authed, HttpError, requireModule } from "@/lib/api/route";
+import { loadProfile } from "@/lib/profile";
+import { toResumeView } from "@/lib/modules";
 import { ResumeDocument } from "@/lib/resume/template";
 
-export async function GET() {
-  const profile = await getProfile();
-  const buffer = await renderToBuffer(<ResumeDocument profile={profile} />);
+/** GET /api/resume/pdf — renders the resume view of the live profile. */
+export const GET = authed(async (ctx) => {
+  requireModule(ctx, "resume");
+  const loaded = await loadProfile(ctx.supabase, ctx.profileId);
+  if (!loaded) throw new HttpError(404, "Profile not found");
 
-  const filename = `${(profile.name || "resume").replace(/\s+/g, "-").toLowerCase()}.pdf`;
+  const resume = toResumeView(loaded.profile);
+  const buffer = await renderToBuffer(<ResumeDocument profile={resume} />);
+  const filename = `${(resume.name || "resume").replace(/[^\w-]+/g, "-").toLowerCase()}.pdf`;
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
@@ -16,4 +22,4 @@ export async function GET() {
       "Cache-Control": "no-store",
     },
   });
-}
+});

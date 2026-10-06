@@ -2,14 +2,39 @@
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import type { PortfolioChange } from "@/lib/portfolio/publish";
 
 export default function PortfolioClient({
   publicToken,
   webhookUrl,
+  initialChanges,
+  initialPublishedAt,
+  autoSync,
 }: {
   publicToken: string | null;
   webhookUrl: string | null;
+  initialChanges: PortfolioChange[];
+  initialPublishedAt: string | null;
+  autoSync: boolean;
 }) {
+  const [changes, setChanges] = useState(initialChanges);
+  const [publishedAt, setPublishedAt] = useState(initialPublishedAt);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+
+  async function publish() {
+    setPublishing(true);
+    setPublishError(null);
+    const res = await fetch("/api/portfolio/publish", { method: "POST" });
+    const data = await res.json();
+    setPublishing(false);
+    if (!res.ok) {
+      setPublishError(data.error ?? "Publish failed.");
+      return;
+    }
+    setChanges([]);
+    if (data.published_at) setPublishedAt(data.published_at);
+  }
   const [token, setToken] = useState(publicToken);
   const [webhook, setWebhook] = useState(webhookUrl ?? "");
   const [saving, setSaving] = useState(false);
@@ -17,7 +42,7 @@ export default function PortfolioClient({
   const [copied, setCopied] = useState(false);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const apiUrl = token ? `${origin}/api/profile?token=${token}` : "";
+  const apiUrl = token ? `${origin}/api/portfolio?token=${token}` : "";
 
   async function copy() {
     await navigator.clipboard.writeText(apiUrl);
@@ -47,6 +72,40 @@ export default function PortfolioClient({
 
   return (
     <div className="flex flex-col gap-10">
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
+          Publish
+        </h2>
+        <p className="text-sm text-[var(--sf-muted)]">
+          {publishedAt
+            ? `Last published ${new Date(publishedAt).toLocaleString()}.`
+            : "Nothing published yet — your site gets a 404 until you publish once."}{" "}
+          Auto-sync on approval is {autoSync ? "on" : "off"}.
+        </p>
+        {changes.length > 0 ? (
+          <ul className="text-xs border border-[var(--sf-line)] rounded px-3 py-2 bg-white flex flex-col gap-1">
+            {changes.map((c, i) => (
+              <li key={`${c.section}-${c.id ?? i}`}>
+                <span className="text-[var(--sf-muted)]">{c.action}</span> {c.section}
+                {c.id ? <span className="text-[var(--sf-muted)]"> · {c.id.slice(0, 8)}</span> : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm">Everything is published.</p>
+        )}
+        <button
+          onClick={publish}
+          disabled={publishing || (changes.length === 0 && !!publishedAt)}
+          className="self-start bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
+        >
+          {publishing
+            ? "Publishing…"
+            : `Publish${changes.length ? ` ${changes.length} change${changes.length === 1 ? "" : "s"}` : ""}`}
+        </button>
+        {publishError && <p className="text-sm text-red-700">{publishError}</p>}
+      </section>
+
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
           Your data endpoint
@@ -81,8 +140,9 @@ export default function PortfolioClient({
           Publish webhook
         </h2>
         <p className="text-sm text-[var(--sf-muted)]">
-          Called on every change, with what changed — a Vercel deploy hook, or
-          your own API route that revalidates just the affected page.
+          Called once per publish, listing every section that changed — a
+          Vercel deploy hook, or your own API route that revalidates just the
+          affected pages.
         </p>
         <div className="flex items-center gap-2">
           <input
@@ -114,8 +174,9 @@ export default function PortfolioClient({
 import { revalidatePath } from "next/cache";
 
 export async function POST(req: Request) {
-  const { section } = await req.json();
-  revalidatePath(\`/\${section}\`); // e.g. /projects, /experience
+  const { changes } = await req.json();
+  const sections = new Set(changes.map((c: { section: string }) => c.section));
+  for (const section of sections) revalidatePath(\`/\${section}\`); // e.g. /projects
   return Response.json({ ok: true });
 }`}
         </pre>

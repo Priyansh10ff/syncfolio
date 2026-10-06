@@ -1,39 +1,39 @@
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PortfolioChange } from "@/lib/portfolio/publish";
 
-type WebhookPayload = {
-  section: "profile" | "experience" | "projects" | "skills" | "education";
-  action: "create" | "update" | "delete";
-  id?: string;
+export type PublishWebhookPayload = {
+  published_at: string;
+  changes: PortfolioChange[];
 };
 
 /**
- * Notifies the user's portfolio site that something changed, and what.
- * Fire-and-forget — a slow or failing webhook never blocks the dashboard
- * action that triggered it. The payload names the section (and id, where
- * relevant) so the receiving site can revalidate just that page instead
- * of rebuilding everything.
+ * Notifies the user's portfolio site that a new version was published,
+ * listing every section/row that changed so the site can revalidate
+ * only those pages. Fired once per publish, never per edit. Best-effort:
+ * a slow or failing receiver never fails the publish (5s timeout).
  */
-export async function triggerWebhook(profileId: string, payload: WebhookPayload) {
+export async function sendPublishWebhook(
+  supabase: SupabaseClient,
+  profileId: string,
+  payload: PublishWebhookPayload
+) {
   try {
-    const supabase = await createClient();
     const { data } = await supabase
       .from("profiles")
       .select("webhook_url")
       .eq("id", profileId)
       .single();
-
     if (!data?.webhook_url) return;
 
-    fetch(data.webhook_url, {
+    await fetch(data.webhook_url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, changed_at: new Date().toISOString() }),
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000),
     }).catch(() => {
-      // Best-effort. The dashboard action already succeeded; a webhook
-      // miss just means the external site stays stale until next change
-      // or its own poll/rebuild.
+      // The site stays on its previous version until the next publish.
     });
   } catch {
-    // Same — never let webhook plumbing break the actual write.
+    // Never let webhook plumbing break the publish itself.
   }
 }

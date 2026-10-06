@@ -1,63 +1,67 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfileId } from "@/lib/current-profile-id";
-import { getProfile } from "@/lib/profile";
+import { authed, dbFail, HttpError, parseBody } from "@/lib/api/route";
+import { noteInput } from "@/lib/schema/inputs";
+import { loadProfile } from "@/lib/profile";
 import { parseUpdateText } from "@/lib/ai/parse-update";
 
-export async function POST(req: Request) {
-  const profileId = await getCurrentProfileId();
-  if (!profileId) {
-    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  }
-
-  const { note } = await req.json();
-  if (!note || typeof note !== "string" || !note.trim()) {
-    return NextResponse.json({ error: "Empty note" }, { status: 400 });
-  }
-
-  const profile = await getProfile();
+/** POST /api/updates/parse — turns a plain-English note into queued proposals. */
+export const POST = authed(async (ctx) => {
+  const { note } = await parseBody(ctx.req, noteInput);
+  const loaded = await loadProfile(ctx.supabase, ctx.profileId);
+  if (!loaded) throw new HttpError(404, "Profile not found");
 
   let result;
   try {
-    result = await parseUpdateText(note, profile);
+    result = await parseUpdateText(note, loaded.profile);
   } catch (err) {
     if (err instanceof Error && err.message === "AI_NOT_CONFIGURED") {
-      return NextResponse.json(
-        {
-          error:
-            "AI updates aren't set up yet. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, or LOCAL_AI_BASE_URL for a local model — see the Configuration section in README.md. You can still add and edit everything by hand on the Profile page.",
-          not_configured: true,
-        },
-        { status: 501 }
+      throw new HttpError(
+        501,
+        "AI updates aren't set up yet. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, or LOCAL_AI_BASE_URL for a local model — see the Configuration section in README.md. You can still add and edit everything by hand on the Profile page.",
+        { not_configured: true }
       );
     }
-    const message = err instanceof Error ? err.message : "Couldn't parse that update.";
     console.error(err);
-    return NextResponse.json({ error: message }, { status: 502 });
+    throw new HttpError(502, err instanceof Error ? err.message : "Couldn't parse that update.");
   }
 
-  if (result.updates.length === 0) {
-    return NextResponse.json({
+  // Drop proposals that can't be valid: updates/deletes need a real id from this profile.
+  const knownIds = new Set(
+    [
+      ...loaded.profile.experience,
+      ...loaded.profile.projects,
+      ...loaded.profile.skills,
+      ...loaded.profile.education,
+    ].map((r) => r.id)
+  );
+  const updates = result.updates.filter((u) => {
+    if (u.action === "create") return u.target_table !== "profiles";
+    if (u.target_table === "profiles") return u.action === "update";
+    return u.target_id !== null && knownIds.has(u.target_id);
+  });
+
+  if (updates.length === 0) {
+    return {
       pending: [],
-      clarification_needed: result.clarification_needed,
-    });
+      clarification_needed:
+        result.clarification_needed ??
+        (result.updates.length ? "I couldn't match that to anything in your profile. Can you be more specific?" : null),
+    };
   }
 
-  const supabase = await createClient();
-  const rows = result.updates.map((u) => ({
-    profile_id: profileId,
-    source: "ai_chat" as const,
-    target_table: u.target_table,
-    payload: { ...u.payload, __action: u.action, __target_id: u.target_id },
-    diff_summary: u.diff_summary,
-    status: "pending" as const,
-  }));
+  const { data, error } = await ctx.supabase
+    .from("pending_updates")
+    .insert(
+      updates.map((u) => ({
+        profile_id: ctx.profileId,
+        source: "ai_chat" as const,
+        target_table: u.target_table,
+        payload: { ...u.payload, __action: u.action, __target_id: u.target_id },
+        diff_summary: u.diff_summary,
+        status: "pending" as const,
+      }))
+    )
+    .select();
+  dbFail(error);
 
-  const { data, error } = await supabase.from("pending_updates").insert(rows).select();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ pending: data, clarification_needed: null });
-}
+  return { pending: data, clarification_needed: null };
+});

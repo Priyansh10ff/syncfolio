@@ -11,8 +11,9 @@ You will be given:
 2. The person's free-text note describing what changed.
 
 Decide, for each distinct change implied by the note, whether it:
-- creates a new row (a new project, a new job, a new skill, a new degree), or
-- updates an existing row (add a bullet/metric to a project or job that already exists, change an end date, etc.)
+- creates a new row (a new project, a new job, a new skill, a new degree),
+- updates an existing row (add a bullet/metric to a project or job that already exists, change an end date, etc.), or
+- deletes an existing row — only when the note explicitly says to remove, drop or delete something.
 
 Match against existing rows by meaning, not exact string — "the trading bot" should match an existing project literally named "BSE/NSE paper-trading bot" if that's the closest existing thing.
 
@@ -22,7 +23,7 @@ Respond with ONLY a JSON object matching this exact shape — no markdown fences
   "updates": [
     {
       "target_table": "experience" | "projects" | "skills" | "education" | "profiles",
-      "action": "create" | "update",
+      "action": "create" | "update" | "delete",
       "target_id": "<existing row id>" | null,
       "payload": { ...fields being set or added... },
       "diff_summary": "<one short human-readable line describing this exact change>"
@@ -32,9 +33,11 @@ Respond with ONLY a JSON object matching this exact shape — no markdown fences
 }
 
 Rules:
-- target_id must be null when action is "create", and must be a real id from the profile summary when action is "update".
+- target_id must be null when action is "create", and must be a real id from the profile summary when action is "update" or "delete".
+- payload for a "delete" is an empty object {}. Never delete "profiles". Never delete because something seems outdated — only on an explicit request.
+- payload for "education" create needs: institution, start_date (YYYY-MM). Optional: degree, end_date, notes.
 - payload for a "create" on "projects" needs at least: name, description. Optional: bullets (array), metrics (array), tags (array).
-- payload for an "update" on "projects" or "experience" should contain only the fields being changed — e.g. { "bullets": ["existing bullets...", "new bullet"] } to append a bullet, or { "metrics": [...] } to add a metric. Include the full new array (existing + new), not just the new item, since this replaces the field.
+- payload for an "update" should contain only the fields being changed — e.g. { "bullets": ["existing bullets...", "new bullet"] } to append a bullet, or { "metrics": [...] } to add a metric. Include the full new array (existing + new), not just the new item, since this replaces the field.
 - payload for "experience" create needs: role, org, start_date (YYYY-MM). end_date is null if current.
 - payload for "skills" create needs: name, and optionally category.
 - Keep diff_summary short and specific: "Added 'cut p95 latency 40% via Redis caching' to Patchwork" not "Updated project."

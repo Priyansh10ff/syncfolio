@@ -1,41 +1,86 @@
 "use client";
 
 import { useState } from "react";
-import { Profile } from "@/lib/schema/profile";
 import { Trash2 } from "lucide-react";
+import type { Profile, ProfileSettings } from "@/lib/schema/profile";
 
-export default function ProfileEditor({ initial }: { initial: Profile }) {
+type Table = "experience" | "projects" | "skills" | "education";
+type Row = { id: string; show_on_resume?: boolean; show_on_portfolio?: boolean };
+
+async function api<T>(url: string, method: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Request failed");
+  return data as T;
+}
+
+export default function ProfileEditor({
+  initial,
+  settings,
+}: {
+  initial: Profile;
+  settings: ProfileSettings;
+}) {
   const [profile, setProfile] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function saveBasics() {
     setSaving(true);
-    await fetch("/api/profile/basics", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    setError(null);
+    try {
+      await api("/api/profile/basics", "PATCH", {
         name: profile.name,
-        headline: profile.headline,
-        summary: profile.summary,
-        location: profile.location,
-        email: profile.email,
+        headline: profile.headline ?? null,
+        summary: profile.summary ?? null,
+        location: profile.location ?? null,
+        email: profile.email ?? "",
         links: profile.links,
-      }),
-    });
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    }
     setSaving(false);
+  }
+
+  /** Generic list operations shared by every section. */
+  function listOps<K extends Table>(table: K) {
+    type Item = Profile[K][number];
+    const set = (items: Item[]) => setProfile((p) => ({ ...p, [table]: items }));
+    const items = profile[table] as Item[];
+    return {
+      items,
+      onAdded: (row: Item) => set([row, ...items]),
+      onDelete: async (id: string) => {
+        try {
+          await api(`/api/${table}`, "DELETE", { id });
+          set(items.filter((x) => x.id !== id));
+        } catch (e) {
+          setError((e as Error).message);
+        }
+      },
+      onToggle: async (id: string, key: "show_on_resume" | "show_on_portfolio", value: boolean) => {
+        try {
+          const { row } = await api<{ row: Item }>(`/api/${table}`, "PATCH", { id, [key]: value });
+          set(items.map((x) => (x.id === id ? row : x)));
+        } catch (e) {
+          setError((e as Error).message);
+        }
+      },
+    };
   }
 
   return (
     <div className="flex flex-col gap-12">
+      {error && <p className="text-sm text-red-700">{error}</p>}
+
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
-          Basics
-        </h2>
-        <Field
-          label="Name"
-          value={profile.name}
-          onChange={(v) => setProfile({ ...profile, name: v })}
-        />
+        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">Basics</h2>
+        <Field label="Name" value={profile.name} onChange={(v) => setProfile({ ...profile, name: v })} />
         <Field
           label="Headline"
           value={profile.headline ?? ""}
@@ -71,7 +116,8 @@ export default function ProfileEditor({ initial }: { initial: Profile }) {
 
       <EntityList
         title="Experience"
-        items={profile.experience}
+        settings={settings}
+        {...listOps("experience")}
         renderItem={(e) => (
           <>
             <div className="font-medium">
@@ -82,66 +128,46 @@ export default function ProfileEditor({ initial }: { initial: Profile }) {
             </div>
           </>
         )}
-        onDelete={async (id) => {
-          await fetch("/api/experience", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id }),
-          });
-          setProfile({
-            ...profile,
-            experience: profile.experience.filter((x) => x.id !== id),
-          });
-        }}
         AddForm={AddExperienceForm}
-        onAdded={(row) =>
-          setProfile({ ...profile, experience: [row, ...profile.experience] })
-        }
       />
 
       <EntityList
         title="Projects"
-        items={profile.projects}
+        settings={settings}
+        {...listOps("projects")}
         renderItem={(p) => (
           <>
             <div className="font-medium">{p.name}</div>
             <div className="text-xs text-[var(--sf-muted)]">{p.description}</div>
           </>
         )}
-        onDelete={async (id) => {
-          await fetch("/api/projects", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id }),
-          });
-          setProfile({
-            ...profile,
-            projects: profile.projects.filter((x) => x.id !== id),
-          });
-        }}
         AddForm={AddProjectForm}
-        onAdded={(row) =>
-          setProfile({ ...profile, projects: [row, ...profile.projects] })
-        }
       />
 
       <EntityList
         title="Skills"
-        items={profile.skills}
+        settings={settings}
+        {...listOps("skills")}
         renderItem={(s) => <div className="font-medium">{s.name}</div>}
-        onDelete={async (id) => {
-          await fetch("/api/skills", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id }),
-          });
-          setProfile({
-            ...profile,
-            skills: profile.skills.filter((x) => x.id !== id),
-          });
-        }}
         AddForm={AddSkillForm}
-        onAdded={(row) => setProfile({ ...profile, skills: [row, ...profile.skills] })}
+      />
+
+      <EntityList
+        title="Education"
+        settings={settings}
+        {...listOps("education")}
+        renderItem={(ed) => (
+          <>
+            <div className="font-medium">
+              {ed.institution}
+              {ed.degree ? ` · ${ed.degree}` : ""}
+            </div>
+            <div className="text-xs text-[var(--sf-muted)]">
+              {ed.start_date} — {ed.end_date ?? "present"}
+            </div>
+          </>
+        )}
+        AddForm={AddEducationForm}
       />
     </div>
   );
@@ -185,18 +211,22 @@ function Field({
   );
 }
 
-function EntityList<T extends { id: string }>({
+function EntityList<T extends Row>({
   title,
   items,
+  settings,
   renderItem,
   onDelete,
+  onToggle,
   AddForm,
   onAdded,
 }: {
   title: string;
   items: T[];
+  settings: ProfileSettings;
   renderItem: (item: T) => React.ReactNode;
   onDelete: (id: string) => void;
+  onToggle: (id: string, key: "show_on_resume" | "show_on_portfolio", value: boolean) => void;
   AddForm: React.ComponentType<{ onAdded: (row: T) => void }>;
   onAdded: (row: T) => void;
 }) {
@@ -204,9 +234,7 @@ function EntityList<T extends { id: string }>({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
-          {title}
-        </h2>
+        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">{title}</h2>
         <button
           onClick={() => setAdding((a) => !a)}
           className="text-xs text-[var(--sf-thread)] hover:underline"
@@ -232,16 +260,34 @@ function EntityList<T extends { id: string }>({
         {items.map((item) => (
           <li
             key={item.id}
-            className="flex items-start justify-between border border-[var(--sf-line)] rounded px-3 py-2"
+            className="flex items-start justify-between gap-3 border border-[var(--sf-line)] rounded px-3 py-2"
           >
-            <div>{renderItem(item)}</div>
-            <button
-              onClick={() => onDelete(item.id)}
-              className="text-[var(--sf-muted)] hover:text-[var(--sf-thread)]"
-              aria-label="Delete"
-            >
-              <Trash2 size={14} />
-            </button>
+            <div className="min-w-0">{renderItem(item)}</div>
+            <div className="flex items-center gap-2 shrink-0">
+              {settings.resume_enabled && (
+                <VisibilityToggle
+                  label="R"
+                  title="Show on resume"
+                  on={item.show_on_resume !== false}
+                  onChange={(v) => onToggle(item.id, "show_on_resume", v)}
+                />
+              )}
+              {settings.portfolio_enabled && (
+                <VisibilityToggle
+                  label="P"
+                  title="Show on portfolio"
+                  on={item.show_on_portfolio !== false}
+                  onChange={(v) => onToggle(item.id, "show_on_portfolio", v)}
+                />
+              )}
+              <button
+                onClick={() => onDelete(item.id)}
+                className="text-[var(--sf-muted)] hover:text-[var(--sf-thread)]"
+                aria-label="Delete"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           </li>
         ))}
       </ul>
@@ -249,144 +295,142 @@ function EntityList<T extends { id: string }>({
   );
 }
 
-function AddExperienceForm({ onAdded }: { onAdded: (row: Profile["experience"][number]) => void }) {
-  const [role, setRole] = useState("");
-  const [org, setOrg] = useState("");
-  const [start, setStart] = useState("");
+function VisibilityToggle({
+  label,
+  title,
+  on,
+  onChange,
+}: {
+  label: string;
+  title: string;
+  on: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={`${title}: ${on ? "on" : "off"}`}
+      aria-pressed={on}
+      onClick={() => onChange(!on)}
+      className={`text-[10px] w-5 h-5 border rounded ${
+        on
+          ? "border-[var(--sf-thread)] text-[var(--sf-thread)]"
+          : "border-[var(--sf-line)] text-[var(--sf-muted)] line-through"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** Small inline form: renders inputs, POSTs them, hands back the saved row. */
+function AddForm<T>({
+  table,
+  fields,
+  onAdded,
+}: {
+  table: Table;
+  fields: { key: string; placeholder: string; required?: boolean; wide?: boolean }[];
+  onAdded: (row: T) => void;
+}) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
 
   async function submit() {
-    if (!role || !org || !start) return;
-    const res = await fetch("/api/experience", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, org, start_date: start }),
-    });
-    if (res.ok) {
-      onAdded({
-        id: crypto.randomUUID(),
-        role,
-        org,
-        start_date: start,
-        end_date: null,
-        bullets: [],
-        tags: [],
-        source: "manual",
-        updated_at: new Date().toISOString(),
-      });
+    setError(null);
+    const body = Object.fromEntries(
+      fields.filter((f) => values[f.key]?.trim()).map((f) => [f.key, values[f.key].trim()])
+    );
+    try {
+      const { row } = await api<{ row: T }>(`/api/${table}`, "POST", body);
+      onAdded(row);
+      setValues({});
+    } catch (e) {
+      setError((e as Error).message);
     }
   }
 
+  const ready = fields.every((f) => !f.required || values[f.key]?.trim());
+
   return (
-    <div className="flex gap-2 flex-wrap items-end border border-dashed border-[var(--sf-line)] rounded p-3">
-      <input
-        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
-        placeholder="Role"
-        value={role}
-        onChange={(e) => setRole(e.target.value)}
-      />
-      <input
-        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
-        placeholder="Org"
-        value={org}
-        onChange={(e) => setOrg(e.target.value)}
-      />
-      <input
-        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
-        placeholder="YYYY-MM"
-        value={start}
-        onChange={(e) => setStart(e.target.value)}
-      />
-      <button
-        onClick={submit}
-        className="text-sm bg-[var(--sf-thread)] text-white rounded px-3 py-1"
-      >
-        Add
-      </button>
+    <div className="flex flex-col gap-2 border border-dashed border-[var(--sf-line)] rounded p-3">
+      <div className="flex gap-2 flex-wrap items-end">
+        {fields.map((f) => (
+          <input
+            key={f.key}
+            className={`border border-[var(--sf-line)] rounded px-2 py-1 text-sm ${
+              f.wide ? "flex-1 min-w-[200px]" : ""
+            }`}
+            placeholder={f.placeholder}
+            value={values[f.key] ?? ""}
+            onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+          />
+        ))}
+        <button
+          onClick={submit}
+          disabled={!ready}
+          className="text-sm bg-[var(--sf-thread)] text-white rounded px-3 py-1 disabled:opacity-50"
+        >
+          Add
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-700">{error}</p>}
     </div>
+  );
+}
+
+function AddExperienceForm({ onAdded }: { onAdded: (row: Profile["experience"][number]) => void }) {
+  return (
+    <AddForm
+      table="experience"
+      onAdded={onAdded}
+      fields={[
+        { key: "role", placeholder: "Role", required: true },
+        { key: "org", placeholder: "Org", required: true },
+        { key: "start_date", placeholder: "Start YYYY-MM", required: true },
+        { key: "end_date", placeholder: "End YYYY-MM (blank = present)" },
+      ]}
+    />
   );
 }
 
 function AddProjectForm({ onAdded }: { onAdded: (row: Profile["projects"][number]) => void }) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-
-  async function submit() {
-    if (!name) return;
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description }),
-    });
-    if (res.ok) {
-      onAdded({
-        id: crypto.randomUUID(),
-        name,
-        description,
-        bullets: [],
-        links: [],
-        tags: [],
-        metrics: [],
-        featured: false,
-        source: "manual",
-        updated_at: new Date().toISOString(),
-      });
-    }
-  }
-
   return (
-    <div className="flex gap-2 flex-wrap items-end border border-dashed border-[var(--sf-line)] rounded p-3">
-      <input
-        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
-        placeholder="Project name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm flex-1 min-w-[200px]"
-        placeholder="One-line description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-      <button
-        onClick={submit}
-        className="text-sm bg-[var(--sf-thread)] text-white rounded px-3 py-1"
-      >
-        Add
-      </button>
-    </div>
+    <AddForm
+      table="projects"
+      onAdded={onAdded}
+      fields={[
+        { key: "name", placeholder: "Project name", required: true },
+        { key: "description", placeholder: "One-line description", wide: true },
+      ]}
+    />
   );
 }
 
 function AddSkillForm({ onAdded }: { onAdded: (row: Profile["skills"][number]) => void }) {
-  const [name, setName] = useState("");
-
-  async function submit() {
-    if (!name) return;
-    const res = await fetch("/api/skills", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (res.ok) {
-      onAdded({ id: crypto.randomUUID(), name });
-      setName("");
-    }
-  }
-
   return (
-    <div className="flex gap-2 items-end border border-dashed border-[var(--sf-line)] rounded p-3">
-      <input
-        className="border border-[var(--sf-line)] rounded px-2 py-1 text-sm"
-        placeholder="Skill"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <button
-        onClick={submit}
-        className="text-sm bg-[var(--sf-thread)] text-white rounded px-3 py-1"
-      >
-        Add
-      </button>
-    </div>
+    <AddForm
+      table="skills"
+      onAdded={onAdded}
+      fields={[
+        { key: "name", placeholder: "Skill", required: true },
+        { key: "category", placeholder: "Category (optional)" },
+      ]}
+    />
+  );
+}
+
+function AddEducationForm({ onAdded }: { onAdded: (row: Profile["education"][number]) => void }) {
+  return (
+    <AddForm
+      table="education"
+      onAdded={onAdded}
+      fields={[
+        { key: "institution", placeholder: "Institution", required: true },
+        { key: "degree", placeholder: "Degree" },
+        { key: "start_date", placeholder: "Start YYYY-MM", required: true },
+        { key: "end_date", placeholder: "End YYYY-MM (blank = present)" },
+      ]}
+    />
   );
 }
