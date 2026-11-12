@@ -74,7 +74,7 @@ export default function SyncClient({
         </p>
         <div className="flex items-center gap-2">
           <input
-            className="flex-1 text-sm border border-[var(--sf-line)] rounded px-3 py-2 bg-white"
+            className="flex-1 text-sm border border-[var(--sf-line)] rounded px-3 py-2 bg-surface"
             placeholder="GitHub username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -83,7 +83,7 @@ export default function SyncClient({
           <button
             onClick={scan}
             disabled={scanning || !username.trim()}
-            className="shrink-0 bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
+            className="shrink-0 bg-[var(--sf-thread)] text-thread-ink rounded px-4 py-2 text-sm disabled:opacity-50"
           >
             {scanning ? "Scanning…" : "Scan now"}
           </button>
@@ -92,7 +92,7 @@ export default function SyncClient({
           <p className="text-xs text-[var(--sf-muted)]">Saving…</p>
         )}
         {message && <p className="text-sm text-[var(--sf-muted)]">{message}</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-del">{error}</p>}
       </section>
 
       <section className="flex flex-col gap-3">

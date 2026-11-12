@@ -69,7 +69,7 @@ export default function UpdatesClient({
       )}
       <div className="flex flex-col gap-2">
         <textarea
-          className="border border-[var(--sf-line)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[var(--sf-thread)]"
+          className="border border-[var(--sf-line)] rounded px-3 py-2 text-sm bg-surface focus:outline-none focus:ring-1 focus:ring-[var(--sf-thread)]"
           rows={3}
           placeholder="e.g. Added Redis caching to Patchwork, cut p95 latency 40%"
           value={note}
@@ -78,11 +78,11 @@ export default function UpdatesClient({
         <button
           onClick={submit}
           disabled={loading || !note.trim()}
-          className="self-start bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
+          className="self-start bg-[var(--sf-thread)] text-thread-ink rounded px-4 py-2 text-sm disabled:opacity-50"
         >
           {loading ? "Thinking…" : "Draft update"}
         </button>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-del">{error}</p>}
         {clarification && (
           <p className="text-sm text-[var(--sf-muted)]">{clarification}</p>
         )}

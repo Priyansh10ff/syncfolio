@@ -76,7 +76,7 @@ export default function ProfileEditor({
 
   return (
     <div className="flex flex-col gap-12">
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-del">{error}</p>}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">Basics</h2>
@@ -108,7 +108,7 @@ export default function ProfileEditor({
         <button
           onClick={saveBasics}
           disabled={saving}
-          className="self-start mt-2 rounded bg-[var(--sf-thread)] text-white text-sm px-4 py-2 hover:opacity-90 disabled:opacity-50"
+          className="self-start mt-2 rounded bg-[var(--sf-thread)] text-thread-ink text-sm px-4 py-2 hover:opacity-90 disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save basics"}
         </button>
@@ -187,7 +187,7 @@ function Field({
   textarea?: boolean;
 }) {
   const cls =
-    "border border-[var(--sf-line)] rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[var(--sf-thread)]";
+    "border border-[var(--sf-line)] rounded px-3 py-2 text-sm bg-surface focus:outline-none focus:ring-1 focus:ring-[var(--sf-thread)]";
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="text-[var(--sf-muted)]">{label}</span>
@@ -369,12 +369,12 @@ function AddForm<T>({
         <button
           onClick={submit}
           disabled={!ready}
-          className="text-sm bg-[var(--sf-thread)] text-white rounded px-3 py-1 disabled:opacity-50"
+          className="text-sm bg-[var(--sf-thread)] text-thread-ink rounded px-3 py-1 disabled:opacity-50"
         >
           Add
         </button>
       </div>
-      {error && <p className="text-xs text-red-700">{error}</p>}
+      {error && <p className="text-xs text-del">{error}</p>}
     </div>
   );
 }

@@ -83,7 +83,7 @@ export default function PortfolioClient({
           Auto-sync on approval is {autoSync ? "on" : "off"}.
         </p>
         {changes.length > 0 ? (
-          <ul className="text-xs border border-[var(--sf-line)] rounded px-3 py-2 bg-white flex flex-col gap-1">
+          <ul className="text-xs border border-[var(--sf-line)] rounded px-3 py-2 bg-surface flex flex-col gap-1">
             {changes.map((c, i) => (
               <li key={`${c.section}-${c.id ?? i}`}>
                 <span className="text-[var(--sf-muted)]">{c.action}</span> {c.section}
@@ -97,13 +97,13 @@ export default function PortfolioClient({
         <button
           onClick={publish}
           disabled={publishing || (changes.length === 0 && !!publishedAt)}
-          className="self-start bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
+          className="self-start bg-[var(--sf-thread)] text-thread-ink rounded px-4 py-2 text-sm disabled:opacity-50"
         >
           {publishing
             ? "Publishing…"
             : `Publish${changes.length ? ` ${changes.length} change${changes.length === 1 ? "" : "s"}` : ""}`}
         </button>
-        {publishError && <p className="text-sm text-red-700">{publishError}</p>}
+        {publishError && <p className="text-sm text-del">{publishError}</p>}
       </section>
 
       <section className="flex flex-col gap-2">
@@ -115,7 +115,7 @@ export default function PortfolioClient({
           at build time or request time.
         </p>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs border border-[var(--sf-line)] rounded px-3 py-2 bg-white overflow-x-auto whitespace-nowrap">
+          <code className="flex-1 text-xs border border-[var(--sf-line)] rounded px-3 py-2 bg-surface overflow-x-auto whitespace-nowrap">
             {apiUrl || "Sign in to get your endpoint"}
           </code>
           <button
@@ -146,7 +146,7 @@ export default function PortfolioClient({
         </p>
         <div className="flex items-center gap-2">
           <input
-            className="flex-1 text-sm border border-[var(--sf-line)] rounded px-3 py-2 bg-white"
+            className="flex-1 text-sm border border-[var(--sf-line)] rounded px-3 py-2 bg-surface"
             placeholder="https://your-portfolio.com/api/syncfolio-webhook"
             value={webhook}
             onChange={(e) => setWebhook(e.target.value)}
@@ -154,7 +154,7 @@ export default function PortfolioClient({
           <button
             onClick={saveWebhook}
             disabled={saving}
-            className="shrink-0 bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm disabled:opacity-50"
+            className="shrink-0 bg-[var(--sf-thread)] text-thread-ink rounded px-4 py-2 text-sm disabled:opacity-50"
           >
             {saved ? "Saved" : saving ? "Saving…" : "Save"}
           </button>
@@ -169,7 +169,7 @@ export default function PortfolioClient({
           A minimal route that revalidates only the changed section on your
           portfolio, instead of rebuilding the whole site.
         </p>
-        <pre className="text-xs border border-[var(--sf-line)] rounded p-3 bg-white overflow-x-auto">
+        <pre className="text-xs border border-[var(--sf-line)] rounded p-3 bg-surface overflow-x-auto">
 {`// app/api/syncfolio-webhook/route.ts
 import { revalidatePath } from "next/cache";
 

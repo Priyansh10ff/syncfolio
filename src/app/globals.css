@@ -1,20 +1,150 @@
 @import "tailwindcss";
 
-:root {
-  --sf-ink: #1c1b1a;
-  --sf-paper: #faf9f6;
-  --sf-thread: #b5622a;
-  --sf-thread-soft: #e9d9c8;
+/*
+ * Syncfolio design tokens.
+ * Dark is the default; light is opt-in via <html data-theme="light">.
+ * Every text color clears WCAG AA (4.5:1) on bg and surface, except
+ * --sf-faint, which is for borders, dividers and decoration only.
+ */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --sf-bg: #0d0c0b;
+  --sf-surface: #151412;
+  --sf-surface-2: #1c1a18;
+  --sf-line: #2a2724;
+  --sf-line-strong: #3a3632;
+  --sf-ink: #e8e4dc;
+  --sf-muted: #8a847b;
+  --sf-faint: #6a645d;
+  --sf-thread: #d9772b;
+  --sf-thread-ink: #0d0c0b;
+  --sf-thread-soft: rgb(217 119 43 / 0.12);
+  --sf-add: #7fb069;
+  --sf-add-soft: rgb(127 176 105 / 0.1);
+  --sf-del: #e0625d;
+  --sf-del-soft: rgb(224 98 93 / 0.1);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --sf-bg: #f6f4ef;
+  --sf-surface: #ffffff;
+  --sf-surface-2: #efece5;
   --sf-line: #dedad2;
-  --sf-muted: #6b6660;
+  --sf-line-strong: #c9c3b8;
+  --sf-ink: #1c1b1a;
+  --sf-muted: #66615b;
+  --sf-faint: #8f8980;
+  --sf-thread: #9e5220;
+  --sf-thread-ink: #ffffff;
+  --sf-thread-soft: rgb(158 82 32 / 0.1);
+  --sf-add: #3a7029;
+  --sf-add-soft: rgb(58 112 41 / 0.08);
+  --sf-del: #b23a36;
+  --sf-del-soft: rgb(178 58 54 / 0.08);
 }
 
-body {
-  background: var(--sf-paper);
-  color: var(--sf-ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+@theme inline {
+  --color-bg: var(--sf-bg);
+  --color-surface: var(--sf-surface);
+  --color-surface-2: var(--sf-surface-2);
+  --color-line: var(--sf-line);
+  --color-line-strong: var(--sf-line-strong);
+  --color-ink: var(--sf-ink);
+  --color-muted: var(--sf-muted);
+  --color-faint: var(--sf-faint);
+  --color-thread: var(--sf-thread);
+  --color-thread-ink: var(--sf-thread-ink);
+  --color-thread-soft: var(--sf-thread-soft);
+  --color-add: var(--sf-add);
+  --color-add-soft: var(--sf-add-soft);
+  --color-del: var(--sf-del);
+  --color-del-soft: var(--sf-del-soft);
+
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Square-ish everything: 2px max. */
+  --radius-xs: 1px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+
+  /* 11px uppercase mono labels. */
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1rem;
+  --text-label--letter-spacing: 0.08em;
+
+  --animate-flash: sf-flash 900ms ease-out 1;
+  --animate-fade: sf-fade 120ms ease-out 1;
 }
 
+@keyframes sf-flash {
+  from {
+    background-color: var(--sf-thread-soft);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+@keyframes sf-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@layer base {
+  html {
+    background: var(--sf-bg);
+  }
+
+  body {
+    background: var(--sf-bg);
+    color: var(--sf-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--sf-thread);
+    color: var(--sf-thread-ink);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--sf-thread);
+    outline-offset: 2px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--sf-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Legacy aliases kept until every screen is rebuilt on the new primitives. */
+:root {
+  --sf-paper: var(--sf-bg);
+}
+
+/* Legacy alias kept until every screen is rebuilt on the new primitives. */
 .font-display {
-  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
 }

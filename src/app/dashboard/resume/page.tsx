@@ -19,7 +19,7 @@ export default async function ResumePage() {
         </div>
         <a
           href="/api/resume/pdf"
-          className="bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm"
+          className="bg-[var(--sf-thread)] text-thread-ink rounded px-4 py-2 text-sm"
         >
           Download PDF
         </a>

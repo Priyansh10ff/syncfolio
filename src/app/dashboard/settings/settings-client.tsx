@@ -68,7 +68,7 @@ export default function SettingsClient({ initial }: { initial: ProfileSettings }
           </label>
         );
       })}
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-del">{error}</p>}
     </div>
   );
 }

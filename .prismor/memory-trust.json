@@ -1,0 +1,27 @@
+{
+  "schema": "prismor.memory-integrity.v1",
+  "files": {
+    "D:\\COde\\Claude\\syncfolio\\CLAUDE.md": {
+      "sha256": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+      "first_seen_at": "2026-11-12T12:09:07.556157+00:00",
+      "first_seen_commit": "acf9d80",
+      "last_approved_at": "2026-11-12T12:09:07.556157+00:00",
+      "last_approved_commit": "acf9d80",
+      "mode": "trusted",
+      "signing_key_id": null
+    },
+    "D:\\COde\\Claude\\syncfolio\\AGENTS.md": {
+      "sha256": "63f2c50380ed6303237cce215ce27af1d620d094c215e28d1b1538a3c070e3bb",
+      "first_seen_at": "2026-11-12T12:09:07.627695+00:00",
+      "first_seen_commit": "acf9d80",
+      "last_approved_at": "2026-11-12T12:09:07.627695+00:00",
+      "last_approved_commit": "acf9d80",
+      "mode": "trusted",
+      "signing_key_id": null
+    }
+  },
+  "signing": {
+    "enabled": false,
+    "public_keys": {}
+  }
+}

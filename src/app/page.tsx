@@ -1,18 +1,17 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import { Landing } from "@/components/landing/landing";
+import { landingDisplay, landingHand, landingMono } from "@/components/landing/fonts";
+
+export const metadata: Metadata = {
+  title: "Syncfolio — say what you shipped, once",
+  description:
+    "Write one sentence when something changes. Syncfolio drafts the diff, you approve it, and your resume and portfolio update themselves. Open source.",
+};
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-6">
-      <h1 className="font-display text-3xl">Syncfolio</h1>
-      <p className="text-[var(--sf-muted)] max-w-md">
-        Tell it what changed once. Your resume and portfolio update themselves.
-      </p>
-      <Link
-        href="/dashboard/profile"
-        className="mt-2 bg-[var(--sf-thread)] text-white rounded px-4 py-2 text-sm"
-      >
-        Open dashboard
-      </Link>
+    <div className={`${landingDisplay.variable} ${landingHand.variable} ${landingMono.variable}`}>
+      <Landing />
     </div>
   );
 }

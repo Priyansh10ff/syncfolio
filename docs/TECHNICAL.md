@@ -10,7 +10,7 @@ and the rules the codebase follows. For the why and the who, see
 |---|---|---|
 | Framework | Next.js 16 (App Router) | Server components for pages, route handlers for the API. Read `node_modules/next/dist/docs/` before relying on older Next.js conventions. |
 | Language | TypeScript 5 | Strict mode. |
-| UI | React 19, Tailwind CSS 4, lucide-react | Theme tokens live in `src/app/globals.css` as `--sf-*` CSS variables. |
+| UI | React 19, Tailwind CSS 4, IBM Plex (self-hosted) | Tokens and primitives described under *UI system*. |
 | Database | Supabase Postgres | Row Level Security on every table. |
 | Auth | Supabase Auth (email magic link) | Cookie sessions via `@supabase/ssr`. |
 | Validation | zod 4 | Every external shape (profile, AI output, sync payloads) has a schema. |
@@ -39,9 +39,10 @@ and the rules the codebase follows. For the why and the who, see
 ├── src/
 │   ├── proxy.ts                  refreshes the Supabase session; guards /dashboard and /login
 │   ├── app/
-│   │   ├── page.tsx              landing page
+│   │   ├── page.tsx              landing page (renders components/landing)
 │   │   ├── layout.tsx            root layout
 │   │   ├── globals.css           Tailwind + theme tokens
+│   │   ├── design/               living reference for UI primitives (dev only)
 │   │   ├── login/                magic-link sign-in
 │   │   ├── auth/callback/        code → session exchange, creates profile row
 │   │   ├── auth/signout/         POST: end session
@@ -73,6 +74,10 @@ and the rules the codebase follows. For the why and the who, see
 │   │       │   └── apply/        approve / reject a diff
 │   │       ├── sync/github-scan/ scan public repos → pending queue
 │   │       └── resume/pdf/       render profile → PDF
+│   ├── components/
+│   │   ├── providers.tsx         hotkeys + toasts + ? overlay for client screens
+│   │   ├── ui/                   design-system primitives (see "UI system" below)
+│   │   └── landing/              public landing page ("Desk"), see "Landing page" below
 │   └── lib/
 │       ├── schema/
 │       │   ├── profile.ts        canonical Profile shape (zod)
@@ -88,6 +93,10 @@ and the rules the codebase follows. For the why and the who, see
 │       ├── portfolio/publish.ts  build snapshot, diff vs last, fire webhook
 │       ├── current-profile-id.ts resolve signed-in user's profile id
 │       ├── safe-next.ts          validates post-login redirect paths
+│       ├── hotkeys.tsx           keyboard shortcut registry (useHotkey, sequences)
+│       ├── diff.ts               field-level diff for proposals and publishes
+│       ├── theme.ts              dark/light theme, applied before first paint
+│       ├── cn.ts                 class name join
 │       ├── webhook.ts            fire-and-forget change notification
 │       ├── ai/
 │       │   ├── parse-update.ts   system prompt + profile summary + JSON parse
@@ -302,6 +311,74 @@ See [`SECURITY.md`](../SECURITY.md) for the full trust model.
 | `CUSTOM_AI_BASE_URL`, `CUSTOM_AI_MODEL`, `CUSTOM_AI_API_KEY` | no | OpenRouter, Groq, Together, Azure |
 
 Full commented reference: [`.env.example`](../.env.example).
+
+## UI system
+
+Dark-first, terminal-flavoured, keyboard-first. Open `/design` in
+`npm run dev` to see every primitive in both themes.
+
+**Tokens** live in `src/app/globals.css` as `--sf-*` CSS variables and
+are exposed to Tailwind as colors: `bg`, `surface`, `surface-2`, `line`,
+`line-strong`, `ink`, `muted`, `faint`, `thread` (accent), `thread-ink`,
+`add`, `del` (plus `*-soft` tints). Use the Tailwind names
+(`bg-surface`, `text-muted`, `border-line`), never raw hex. Every text
+color clears WCAG AA on `bg` and `surface`; `faint` is for borders and
+decoration only.
+
+**Type:** IBM Plex Mono for headings, labels, data, diffs and nav; IBM
+Plex Sans for prose. Both are self-hosted from `@fontsource` via
+`next/font/local` — no Google Fonts request. Labels use `text-label`
+(11px, uppercase, tracked).
+
+**Shape and motion:** 1px borders, 2px max radius, no shadows except the
+2px accent bar on the selected row. `animate-fade` (120ms) for things
+appearing, `animate-flash` once on a row that just saved. Reduced motion
+is respected globally.
+
+**Theme:** `<html data-theme>`; dark by default, light saved in
+`localStorage` and applied by an inline script before paint.
+
+| Primitive | Use |
+|---|---|
+| `Button` | `primary` / `secondary` / `ghost` / `danger`, `sm` / `md`, optional `shortcut` hint |
+| `Input`, `Textarea`, `Field`, `Label` | forms; `Field` wires label, hint and error for screen readers |
+| `InlineField` | click-to-edit text that saves itself (Enter / blur saves, Esc cancels) |
+| `DiffView` + `lib/diff.ts` | proposals and unpublished changes as `+` / `-` lines |
+| `DataTable` | dense mono table; selection controlled by the screen |
+| `Tag` | `[ai_chat]`-style mono tags |
+| `ToggleChip` | the R / P visibility switches |
+| `SectionHeader`, `PageHeader`, `EmptyState` | page structure |
+| `StatusBar` | vim-style status line at the bottom of the shell |
+| `Dialog` | modal with focus trap and Escape |
+| `CommandPalette` | ⌘K / Ctrl K over a list of commands |
+| `ShortcutsOverlay` | `?` lists every registered shortcut |
+| `ToastProvider` / `useToast` | short mono notifications, optional action (e.g. undo) |
+| `ThemeToggle` | `theme: dark` text switch |
+
+**Shortcuts:** register with `useHotkey("a", handler, { description,
+group })` from `lib/hotkeys.tsx`. Supports `mod+k` (⌘ on macOS, Ctrl
+elsewhere), modifiers, and two-key sequences like `g p`. Shortcuts are
+ignored while typing unless `allowInInputs` is set. Anything with a
+`description` shows up in the `?` overlay automatically.
+
+## Landing page
+
+`/` is a marketing page with its own look, separate from the app's UI
+system: a green cutting mat with paper, sticky notes and a laptop on it,
+in Bricolage Grotesque, Caveat and JetBrains Mono (self-hosted, like Plex).
+
+- **Scroll-driven, no animation library.** `use-scroll-scenes.ts` runs one
+  `requestAnimationFrame` per scroll and writes CSS custom properties on
+  each scene; `landing.css` turns them into transforms and opacity.
+  Timings for each pinned scene (`desk`, `inbox`, `folders`) are pure
+  functions in `scenes.ts`.
+- **Pinned scenes** are a tall `[data-ld-pin]` section with a sticky
+  `.ld-stage`; progress is how far the section has scrolled past the top.
+- **Reveals:** `.ld-rv` elements fly in from `--fx/--fy/--fr` as `--v`
+  goes 0 → 1; `.ld-tilt` flattens the app screenshot.
+- **Safe by default:** every property defaults to its finished value, so
+  without JS or with reduced motion the page is complete and static.
+  Under 1100px wide the scenes unpin and render finished.
 
 ## Conventions
 

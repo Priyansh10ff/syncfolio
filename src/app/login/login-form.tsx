@@ -56,13 +56,13 @@ export default function LoginForm({
             <button
               type="submit"
               disabled={sending}
-              className="bg-[var(--sf-thread)] text-white rounded px-3 py-2 text-sm disabled:opacity-50"
+              className="bg-[var(--sf-thread)] text-thread-ink rounded px-3 py-2 text-sm disabled:opacity-50"
             >
               {sending ? "Sending…" : "Send magic link"}
             </button>
           </form>
         )}
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-del">{error}</p>}
       </div>
     </div>
   );
