@@ -4,7 +4,7 @@ import { ReviewQueue } from "@/components/app/review-queue";
 import { Tabs } from "@/components/app/tabs";
 import { isAIConfigured } from "@/lib/ai/providers/types";
 import { getDashboardContext, getHistory, getReviewItems } from "@/lib/dashboard";
-import { NoteBox } from "./updates-client";
+import { NoteBox } from "./note-box";
 
 export default async function UpdatesPage() {
   const ctx = await getDashboardContext();

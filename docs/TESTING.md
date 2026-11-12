@@ -27,7 +27,7 @@ first time through.
 
 On `/dashboard/profile`:
 
-- [ ] Fill in name, headline, summary, location, email → **Save basics**
+- [ ] Click name, headline, summary, location and email in turn, type, press Enter (each saves itself)
       → refresh the page → values persisted
 - [ ] Add an experience entry (role, org, start date) → appears in the
       list immediately, no reload needed
@@ -50,7 +50,7 @@ saved:
 - [ ] Live preview renders (not blank, not an error state)
 - [ ] Add a new project on the Profile page, come back to Resume — the
       preview reflects it without any extra step
-- [ ] Click **Download PDF** — a PDF downloads, opens correctly, and the
+- [ ] Click **download pdf** (or press `d`) — a PDF downloads, opens correctly, and the
       content matches what's in the preview
 - [ ] With an empty profile (new test account, nothing filled in), the
       Resume page shows the "add your name and experience" message
@@ -65,14 +65,14 @@ Set up **one** AI provider in `.env.local` first (see `.env.example`).
       silent failure
 - [ ] With a provider configured: type something concrete, e.g. "Added
       Redis caching to my trading bot project, cut latency 40%" (adjust
-      to match a project you actually have) → **Draft update** → a
+      to match a project you actually have) → press Enter → a
       pending item appears with a sensible one-line summary
-- [ ] Click **Approve** → the item disappears from the queue → go to
+- [ ] Click **approve** (or press `a`) → the item disappears from the queue → go to
       Profile → the change is actually there (new bullet/metric on the
       right project)
 - [ ] Call `POST /api/updates/undo` with that item's id → the change is
       reverted on Profile (only the most recent approval can be undone)
-- [ ] Draft another update, click **Reject** → disappears from the
+- [ ] Draft another update, click **reject** (or press `r`) → disappears from the
       queue → go to Profile → confirm nothing changed
 - [ ] Try a vague note ("stuff happened at work") → confirm it either
       asks for clarification or proposes nothing, rather than
@@ -90,16 +90,16 @@ On `/dashboard/portfolio`:
       `SUPABASE_SERVICE_ROLE_KEY` to be set — if it's not, confirm the
       page says so clearly rather than showing a broken URL)
 - [ ] Before the first publish, the URL returns 404 "Nothing published yet"
-- [ ] Click **Publish** → open the URL in a new incognito tab (no session)
+- [ ] Click **publish** (or press ⌘/Ctrl+Enter) → open the URL in a new incognito tab (no session)
       → you get your portfolio JSON with a `published_at`
 - [ ] Turn **P** off on one project on the Profile page → the Portfolio page
       lists it as an unpublished change; the URL still shows it until you
       publish, then it's gone
-- [ ] Click **Regenerate token** → the old URL now returns 404/invalid,
+- [ ] Type `rotate` and click **rotate token** → the old URL now returns 404/invalid,
       the new one works
 - [ ] Set a webhook URL pointing at a scratch endpoint you control (e.g.
       [webhook.site](https://webhook.site) for a quick manual check) →
-      **Save** → add a project on the Profile page → **Publish** → confirm
+      press Enter → add a project on the Profile page → **publish** → confirm
       the receiver got one POST with
       `{ published_at, changes: [{ section: "projects", action: "create", id }] }`
 - [ ] With auto-sync on (Settings), approve an AI update → the portfolio
@@ -111,7 +111,7 @@ On `/dashboard/portfolio`:
 On `/dashboard/sync`:
 
 - [ ] Enter a real GitHub username with at least one public repo not
-      already in your profile → **Scan now** → a pending proposal
+      already in your profile → **scan public repos** → a pending proposal
       appears per new repo
 - [ ] Scan again immediately → confirm it does *not* re-propose the same
       repos ("Nothing new since last scan")

@@ -21,7 +21,7 @@ function Switch({ on }: { on: boolean }) {
   );
 }
 
-export default function SettingsClient({ initial, email }: { initial: ProfileSettings; email: string | null }) {
+export default function SettingsForm({ initial, email }: { initial: ProfileSettings; email: string | null }) {
   const router = useRouter();
   const toast = useToast();
   const [settings, setSettings] = useState(initial);

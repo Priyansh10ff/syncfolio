@@ -98,21 +98,3 @@ export type Skill = z.infer<typeof skillSchema>;
 export type Education = z.infer<typeof educationSchema>;
 export type Profile = z.infer<typeof profileSchema>;
 export type ProfileSettings = z.infer<typeof profileSettingsSchema>;
-
-export const DEFAULT_SETTINGS: ProfileSettings = {
-  resume_enabled: true,
-  portfolio_enabled: true,
-  portfolio_auto_sync: true,
-};
-
-export function emptyProfile(): Profile {
-  return {
-    name: "",
-    links: [],
-    experience: [],
-    projects: [],
-    skills: [],
-    education: [],
-    updated_at: new Date().toISOString(),
-  };
-}

@@ -31,14 +31,9 @@ export type EditableTable = keyof typeof EDITABLE_FIELDS;
 export type ContentTable = Exclude<EditableTable, "profiles">;
 
 export const EDITABLE_TABLES = Object.keys(EDITABLE_FIELDS) as EditableTable[];
-export const CONTENT_TABLES: ContentTable[] = ["experience", "projects", "skills", "education"];
 
 export function isEditableTable(value: unknown): value is EditableTable {
   return typeof value === "string" && value in EDITABLE_FIELDS;
-}
-
-export function isContentTable(value: unknown): value is ContentTable {
-  return isEditableTable(value) && value !== "profiles";
 }
 
 /** Tables that carry `updated_at` and `source` columns. */

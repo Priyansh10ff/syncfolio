@@ -32,6 +32,14 @@ update box and the public/external-sync endpoints respectively — see
   new provider means adding one file there and registering it in
   `providers/index.ts` — nothing else should need to change.
 
+## Where code goes
+
+`src/app` holds routes: pages, layouts, route handlers, plus the one
+client component a page needs, next to it. Anything two or more screens
+share goes in `src/components` (`ui/` for primitives, `app/` for app
+building blocks). Anything without UI goes in `src/lib`. The full map is
+in [`docs/TECHNICAL.md`](docs/TECHNICAL.md#folder-structure).
+
 ## Before opening a PR
 
 ```bash

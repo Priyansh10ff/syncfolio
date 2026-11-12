@@ -3,7 +3,7 @@ import { History } from "@/components/app/history";
 import { ReviewQueue } from "@/components/app/review-queue";
 import { Tabs } from "@/components/app/tabs";
 import { getDashboardContext, getHistory, getReviewItems } from "@/lib/dashboard";
-import { GithubScan } from "./sync-client";
+import { GithubScan } from "./github-scan";
 
 const SOURCES = ["github_scan", "external_sync"] as const;
 

@@ -111,52 +111,18 @@ Full route list: [Repo structure](#repo-structure) below.
 
 ```
 src/
-  app/
-    api/profile/               → GET: live profile + settings (session)
-    api/portfolio/             → GET: published portfolio (?token=)
-    api/portfolio/pending/     → GET: unpublished changes
-    api/portfolio/publish/     → POST: publish a snapshot, fire the webhook
-    api/settings/              → GET / PATCH: modules and auto-sync default
-    api/profile/basics/        → PATCH: name, headline, summary, links
-    api/profile/webhook/       → PATCH: save the publish webhook URL
-    api/profile/token/         → POST: rotate the public read token
-    api/profile/github/        → PATCH: save the GitHub username to scan
-    api/profile/external-sync/ → POST: external edits → pending queue
-    api/experience/            → POST / PATCH / DELETE
-    api/projects/              → POST / PATCH / DELETE
-    api/skills/                → POST / PATCH / DELETE
-    api/education/             → POST / PATCH / DELETE
-    api/updates/parse/         → note → proposed diffs (via configured AI provider)
-    api/updates/apply/         → approve/reject a pending diff (any source)
-    api/updates/pending/       → list unresolved diffs
-    api/updates/undo/          → POST: undo the most recent approval
-    api/updates/history/       → GET: recently resolved diffs
-    api/resume/pdf/            → GET: renders the profile to a downloadable PDF
-    api/sync/github-scan/      → POST: scan public repos, queue new-project proposals
-    auth/callback/             → magic-link session exchange, creates the profile row
-    auth/signout/              → POST: sign out
-    dashboard/                 → profile editor, AI updates, resume preview, portfolio settings, sync queue
-    login/                     → email sign-in
-  lib/
-    schema/profile.ts          → canonical Profile shape (zod)
-    ai/parse-update.ts         → prompt + orchestration for note → structured diff
-    ai/proposed-update.ts      → zod schema for a proposed diff
-    ai/providers/               → Anthropic, OpenAI, Gemini, local, custom — pick at runtime
-    resume/template.tsx        → the resume layout, shared by preview and PDF download
-    github/scan.ts              → fetch public repos, diff against existing projects
-    webhook.ts                  → fires the configured webhook after a publish
-    modules.ts                  → resume view and portfolio view of the profile
-    portfolio/publish.ts        → diff vs last snapshot, publish, webhook
-    updates/apply.ts            → apply / revert a proposal (allowlisted fields)
-    api/                        → route helpers: auth, body parsing, CRUD factory
-    supabase/                   → server, browser, and admin (service-role) clients
-    profile.ts                  → assembles Profile from Supabase tables, by session or public token
-supabase/schema.sql             → Postgres schema + RLS policies (fresh setups)
-supabase/migrations/            → incremental changes for existing databases
-docs/
-  DEPLOYMENT.md                 → step-by-step: local setup, hosted deploy, going to production
-  TESTING.md                    → manual test pass for every feature before you ship
+  app/            routes: landing, login, auth, dashboard pages, API route handlers
+  components/
+    ui/           design-system primitives
+    app/          app shell, review queue, profile editors
+    landing/      the landing page
+  lib/            data, AI, diffing, publishing, schemas — no UI
+supabase/         schema.sql + migrations/
+docs/             PRODUCT, TECHNICAL, DEPLOYMENT, TESTING
 ```
+
+Every route, file and API endpoint is listed in
+[`docs/TECHNICAL.md`](docs/TECHNICAL.md#folder-structure).
 
 ## Testing and deployment
 

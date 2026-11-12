@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/ui";
 import { getDashboardContext } from "@/lib/dashboard";
-import SettingsClient from "./settings-client";
+import SettingsForm from "./settings-form";
 
 export default async function SettingsPage() {
   const ctx = await getDashboardContext();
@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="settings" />
-      <SettingsClient initial={ctx.settings} email={user?.email ?? null} />
+      <SettingsForm initial={ctx.settings} email={user?.email ?? null} />
     </>
   );
 }

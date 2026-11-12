@@ -23,7 +23,7 @@ function split(item: ReviewItem) {
   return { action: (__action as Action) ?? "update", fields };
 }
 
-export function changesFor(item: ReviewItem): FieldChange[] {
+function changesFor(item: ReviewItem): FieldChange[] {
   const { action, fields } = split(item);
   if (action === "create") return diffRecords(null, fields);
   if (action === "delete") return diffRecords(item.before, null);

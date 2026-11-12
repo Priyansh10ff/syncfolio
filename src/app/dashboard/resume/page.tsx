@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/ui";
 import { getDashboardContext } from "@/lib/dashboard";
-import ModuleOff from "../module-off";
-import ResumeWorkspace from "./resume-preview";
+import ModuleOff from "@/components/app/module-off";
+import ResumeWorkspace from "./resume-workspace";
 
 export default async function ResumePage() {
   const { profile, settings } = await getDashboardContext();

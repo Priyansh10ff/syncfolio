@@ -3,9 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   Profile,
   Link,
-  emptyProfile,
   ProfileSettings,
-  DEFAULT_SETTINGS,
 } from "@/lib/schema/profile";
 
 type ProfileRow = {
@@ -87,47 +85,6 @@ export async function loadProfile(
     .single<ProfileRow>();
   if (!row) return null;
   return { profile: await assembleProfile(supabase, row), settings: settingsOf(row) };
-}
-
-/** The signed-in user's live profile + settings (pages and session routes). */
-export async function getProfileWithSettings(): Promise<{
-  profile: Profile;
-  settings: ProfileSettings;
-}> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { profile: emptyProfile(), settings: DEFAULT_SETTINGS };
-
-  const { data: row } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", user.id)
-    .single<ProfileRow>();
-  if (!row) return { profile: emptyProfile(), settings: DEFAULT_SETTINGS };
-
-  return { profile: await assembleProfile(supabase, row), settings: settingsOf(row) };
-}
-
-/** The signed-in user's live profile. */
-export async function getProfile(): Promise<Profile> {
-  return (await getProfileWithSettings()).profile;
-}
-
-/** The signed-in user's module settings. */
-export async function getSettings(): Promise<ProfileSettings> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return DEFAULT_SETTINGS;
-  const { data } = await supabase
-    .from("profiles")
-    .select("resume_enabled, portfolio_enabled, portfolio_auto_sync")
-    .eq("user_id", user.id)
-    .single<ProfileSettings>();
-  return data ?? DEFAULT_SETTINGS;
 }
 
 /** Ensures a profiles row exists for the current user, creating one if needed. */

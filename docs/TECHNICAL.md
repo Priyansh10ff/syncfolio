@@ -24,101 +24,111 @@ and the rules the codebase follows. For the why and the who, see
 ```
 .
 ├── .github/
-│   ├── workflows/ci.yml          lint + build on every push/PR
-│   ├── ISSUE_TEMPLATE/           bug and feature templates
+│   ├── workflows/ci.yml            lint + build on every push/PR
+│   ├── ISSUE_TEMPLATE/             bug and feature templates
 │   └── PULL_REQUEST_TEMPLATE.md
 ├── docs/
-│   ├── PRODUCT.md                what Syncfolio is, who it's for, why
-│   ├── TECHNICAL.md              this file
-│   ├── DEPLOYMENT.md             local setup, deploy, production checklist
-│   └── TESTING.md                manual test pass
-├── public/                       static assets
+│   ├── PRODUCT.md                  what Syncfolio is, who it's for, why
+│   ├── TECHNICAL.md                this file
+│   ├── DEPLOYMENT.md               local setup, deploy, production checklist
+│   └── TESTING.md                  manual test pass
 ├── supabase/
-│   ├── schema.sql                tables, constraints, RLS policies (fresh setups)
-│   └── migrations/               incremental changes for existing databases
+│   ├── schema.sql                  tables, constraints, RLS (fresh setups)
+│   └── migrations/                 incremental changes for existing databases
 ├── src/
-│   ├── proxy.ts                  refreshes the Supabase session; guards /dashboard and /login
-│   ├── app/
-│   │   ├── page.tsx              landing page (renders components/landing)
-│   │   ├── layout.tsx            root layout
-│   │   ├── globals.css           Tailwind + theme tokens
-│   │   ├── design/               living reference for UI primitives (dev only)
-│   │   ├── login/                magic-link sign-in
-│   │   ├── auth/callback/        code → session exchange, creates profile row
-│   │   ├── auth/signout/         POST: end session
+│   ├── proxy.ts                    refreshes the Supabase session; guards /dashboard and /login
+│   ├── app/                        routes only — pages, layouts, route handlers
+│   │   ├── layout.tsx              root layout: Plex fonts, theme script
+│   │   ├── globals.css             tokens, Tailwind theme, app texture
+│   │   ├── page.tsx                landing page → components/landing
+│   │   ├── login/                  page.tsx + login-form.tsx (magic link)
+│   │   ├── auth/
+│   │   │   ├── callback/           code → session, creates the profile row
+│   │   │   └── signout/            POST: end session
+│   │   ├── design/                 UI primitives reference (dev only)
 │   │   ├── dashboard/
-│   │   │   ├── layout.tsx        sidebar nav + sign out
-│   │   │   ├── profile/          manual editor (source of truth)
-│   │   │   ├── updates/          AI note box + review queue
-│   │   │   ├── resume/           live preview + PDF download (resume module)
-│   │   │   ├── portfolio/        publish, unpublished changes, token, webhook (portfolio module)
-│   │   │   ├── settings/         module toggles, auto-sync default, theme, account
-│   │   │   ├── welcome/          first-run setup: modules → name → GitHub scan
-│   │   │   └── sync/             GitHub scan + external-sync review queue
+│   │   │   ├── layout.tsx          loads shell status → components/app/app-shell
+│   │   │   ├── page.tsx            → /welcome when the profile is empty, else /profile
+│   │   │   ├── welcome/            first-run setup (welcome.tsx)
+│   │   │   ├── profile/            profile-editor.tsx
+│   │   │   ├── updates/            note-box.tsx + review queue
+│   │   │   ├── resume/             resume-workspace.tsx (outline + live preview)
+│   │   │   ├── portfolio/          portfolio-workspace.tsx (publish, endpoint, webhook, token)
+│   │   │   ├── sync/               github-scan.tsx + review queue
+│   │   │   └── settings/           settings-form.tsx
 │   │   └── api/
-│   │       ├── profile/          GET live profile (session only)
-│   │       │   ├── basics/       PATCH name, headline, summary, links
-│   │       │   ├── token/        POST rotate public token
-│   │       │   ├── webhook/      PATCH webhook URL
-│   │       │   ├── github/       PATCH GitHub username
-│   │       │   └── external-sync/ POST inbound edits → pending queue
-│   │       ├── portfolio/        GET published snapshot (?token=)
-│   │       │   └── publish/      POST publish live profile → new snapshot
-│   │       ├── settings/         PATCH module toggles, auto-sync default
-│   │       ├── experience/       POST / PATCH / DELETE
-│   │       ├── projects/         POST / PATCH / DELETE
-│   │       ├── skills/           POST / PATCH / DELETE
-│   │       ├── education/        POST / PATCH / DELETE
+│   │       ├── profile/            GET live profile (session)
+│   │       │   ├── basics/         PATCH name, headline, summary, links
+│   │       │   ├── token/          POST rotate public token
+│   │       │   ├── webhook/        PATCH webhook URL
+│   │       │   ├── github/         PATCH GitHub username
+│   │       │   └── external-sync/  POST site edits → pending queue (token)
+│   │       ├── portfolio/          GET published snapshot (?token=)
+│   │       │   ├── pending/        GET unpublished changes
+│   │       │   └── publish/        POST new snapshot + webhook
+│   │       ├── settings/           GET / PATCH modules, auto-sync
+│   │       ├── experience/         POST / PATCH / DELETE
+│   │       ├── projects/           POST / PATCH / DELETE
+│   │       ├── skills/             POST / PATCH / DELETE
+│   │       ├── education/          POST / PATCH / DELETE
 │   │       ├── updates/
-│   │       │   ├── parse/        note → proposed diffs (AI)
-│   │       │   ├── pending/      list unresolved diffs
-│   │       │   └── apply/        approve / reject a diff
-│   │       ├── sync/github-scan/ scan public repos → pending queue
-│   │       └── resume/pdf/       render profile → PDF
+│   │       │   ├── parse/          note → proposals (AI)
+│   │       │   ├── pending/        GET unresolved, PATCH edit a proposal
+│   │       │   ├── apply/          approve / reject
+│   │       │   ├── undo/           revert the latest approval
+│   │       │   └── history/        recently resolved
+│   │       ├── sync/github-scan/   public repos → pending queue
+│   │       └── resume/pdf/         profile → PDF (?density=compact)
 │   ├── components/
-│   │   ├── providers.tsx         hotkeys + toasts + ? overlay for client screens
-│   │   ├── app/                  app screens' building blocks: shell, review queue, history, tabs, profile editors
-│   │   ├── ui/                   design-system primitives (see "UI system" below)
-│   │   └── landing/              public landing page ("Desk"), see "Landing page" below
+│   │   ├── providers.tsx           hotkeys + toasts + ? overlay
+│   │   ├── ui/                     design-system primitives (see "UI system")
+│   │   ├── app/                    app building blocks
+│   │   │   ├── app-shell.tsx       sidebar, status bar, ⌘K palette, g-shortcuts
+│   │   │   ├── review-queue.tsx    proposals as diffs, approve/reject/edit/undo
+│   │   │   ├── history.tsx         resolved proposals + undo
+│   │   │   ├── tabs.tsx
+│   │   │   ├── module-off.tsx      placeholder for a disabled module
+│   │   │   └── profile/            specs.ts (field config), entity-section, field-editors
+│   │   └── landing/                landing page ("Desk"), see "Landing page"
 │   └── lib/
 │       ├── schema/
-│       │   ├── profile.ts        canonical Profile shape (zod)
-│       │   ├── editable-fields.ts per-table column allowlist for proposals
-│       │   ├── inputs.ts         zod schemas for every request body
+│       │   ├── profile.ts          canonical Profile shape (zod)
+│       │   ├── inputs.ts           zod schemas for every request body
+│       │   ├── editable-fields.ts  per-table column allowlist
 │       │   └── pending-update-row.ts
-│       ├── profile.ts            load live Profile + settings; ensureProfile
 │       ├── api/
-│       │   ├── route.ts          authed()/open() wrappers, parseBody, HttpError
-│       │   └── content-routes.ts POST/PATCH/DELETE factory for content tables
-│       ├── updates/apply.ts      apply / revert proposals, optional auto-sync
-│       ├── modules.ts            module flags; resume/portfolio views of a Profile
-│       ├── portfolio/publish.ts  build snapshot, diff vs last, fire webhook
-│       ├── current-profile-id.ts resolve signed-in user's profile id
-│       ├── safe-next.ts          validates post-login redirect paths
-│       ├── dashboard.ts          server data for dashboard pages (context, shell status, review items)
-│       ├── api/client.ts         browser fetch helper that throws the server's error message
-│       ├── time.ts               "4m ago" formatting
-│       ├── hotkeys.tsx           keyboard shortcut registry (useHotkey, sequences)
-│       ├── diff.ts               field-level diff for proposals and publishes
-│       ├── theme.ts              dark/light theme, applied before first paint
-│       ├── cn.ts                 class name join
-│       ├── webhook.ts            fire-and-forget change notification
+│       │   ├── route.ts            authed()/open() wrappers, parseBody, HttpError
+│       │   ├── content-routes.ts   POST/PATCH/DELETE factory for content tables
+│       │   └── client.ts           browser fetch helper
 │       ├── ai/
-│       │   ├── parse-update.ts   system prompt + profile summary + JSON parse
-│       │   ├── proposed-update.ts zod schema for AI proposals
-│       │   └── providers/        anthropic, openai, gemini, local, custom
-│       ├── github/scan.ts        fetch public repos, diff against projects
-│       ├── resume/template.tsx   resume layout shared by preview and PDF
-│       └── supabase/
-│           ├── server.ts         cookie-bound server client (RLS applies)
-│           ├── client.ts         browser client
-│           └── admin.ts          service-role client (server only)
-├── .env.example                  every env var, documented
-├── AGENTS.md / CLAUDE.md         instructions for coding agents
+│       │   ├── parse-update.ts     prompt + profile summary + JSON parse
+│       │   ├── proposed-update.ts  zod schema for AI proposals
+│       │   └── providers/          anthropic, openai, gemini, local, custom
+│       ├── supabase/               server (RLS), client (browser), admin (service role)
+│       ├── updates/apply.ts        apply / revert proposals, optional auto-sync
+│       ├── portfolio/publish.ts    diff vs last snapshot, publish, webhook
+│       ├── github/scan.ts          public repos → project proposals
+│       ├── resume/template.tsx     resume layout shared by preview and PDF
+│       ├── dashboard.ts            server data for dashboard pages
+│       ├── profile.ts              load live Profile + settings; ensureProfile
+│       ├── modules.ts              resume view / portfolio view of a Profile
+│       ├── webhook.ts              publish webhook sender
+│       ├── diff.ts                 field-level diff for proposals and publishes
+│       ├── hotkeys.tsx             shortcut registry (useHotkey, sequences)
+│       ├── theme.ts                dark/light, applied before first paint
+│       ├── safe-next.ts            validates post-login redirect paths
+│       ├── time.ts                 "4m ago"
+│       └── cn.ts                   class name join
+├── .env.example                    every env var, documented
+├── AGENTS.md / CLAUDE.md           instructions for coding agents
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 └── README.md
 ```
+
+Rule of thumb: `src/app` holds routes and the page-specific client
+component next to each page; anything shared by two or more screens
+lives in `src/components`; anything without UI lives in `src/lib`.
 
 ## Data model
 

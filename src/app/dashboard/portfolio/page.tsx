@@ -2,8 +2,8 @@ import { PageHeader } from "@/components/ui";
 import { getDashboardContext, getPublishHistory, latestSnapshot } from "@/lib/dashboard";
 import { toPortfolioView, type PortfolioView } from "@/lib/modules";
 import { diffViews } from "@/lib/portfolio/publish";
-import ModuleOff from "../module-off";
-import PortfolioWorkspace, { type PendingChange } from "./portfolio-client";
+import ModuleOff from "@/components/app/module-off";
+import PortfolioWorkspace, { type PendingChange } from "./portfolio-workspace";
 
 type Rows = Record<string, unknown>[];
 
