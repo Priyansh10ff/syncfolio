@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatKeys, useHotkey } from "@/lib/hotkeys";
 import { Dialog } from "./dialog";
@@ -36,6 +36,13 @@ export function scoreCommand(query: string, text: string): number {
   return score;
 }
 
+const OPEN_EVENT = "sf:open-command-palette";
+
+/** Opens the palette from anywhere, e.g. a "commands" button. */
+export function openCommandPalette() {
+  window.dispatchEvent(new Event(OPEN_EVENT));
+}
+
 /** ⌘K / Ctrl+K palette over a list of commands. */
 export function CommandPalette({ commands }: { commands: Command[] }) {
   const [open, setOpen] = useState(false);
@@ -51,6 +58,16 @@ export function CommandPalette({ commands }: { commands: Command[] }) {
     },
     { description: "Open command palette", group: "General", allowInInputs: true }
   );
+
+  useEffect(() => {
+    const open = () => {
+      setOpen(true);
+      setQuery("");
+      setActive(0);
+    };
+    window.addEventListener(OPEN_EVENT, open);
+    return () => window.removeEventListener(OPEN_EVENT, open);
+  }, []);
 
   const results = useMemo(() => {
     return commands

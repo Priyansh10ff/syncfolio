@@ -1,15 +1,16 @@
-import { getSettings } from "@/lib/profile";
+import { PageHeader } from "@/components/ui";
+import { getDashboardContext } from "@/lib/dashboard";
 import SettingsClient from "./settings-client";
 
 export default async function SettingsPage() {
-  const settings = await getSettings();
+  const ctx = await getDashboardContext();
+  const {
+    data: { user },
+  } = await ctx.supabase.auth.getUser();
   return (
-    <div className="max-w-xl">
-      <h1 className="font-display text-2xl mb-1">Settings</h1>
-      <p className="text-sm text-[var(--sf-muted)] mb-8">
-        Resume and Portfolio are separate modules on top of the same profile. Use one or both.
-      </p>
-      <SettingsClient initial={settings} />
-    </div>
+    <>
+      <PageHeader title="settings" />
+      <SettingsClient initial={ctx.settings} email={user?.email ?? null} />
+    </>
   );
 }

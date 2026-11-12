@@ -1,44 +1,45 @@
 import { Document, Page, Text, View, Link, StyleSheet } from "@react-pdf/renderer";
 import { Profile } from "@/lib/schema/profile";
 
-const styles = StyleSheet.create({
+function makeStyles(k: number) {
+  return StyleSheet.create({
   page: {
-    padding: 36,
-    fontSize: 10,
+    padding: 36 * k,
+    fontSize: 10 * k,
     fontFamily: "Helvetica",
     color: "#1c1b1a",
   },
   name: {
-    fontSize: 20,
+    fontSize: 20 * k,
     fontFamily: "Helvetica-Bold",
   },
   headline: {
-    fontSize: 11,
+    fontSize: 11 * k,
     color: "#4a4540",
-    marginTop: 2,
+    marginTop: 2 * k,
   },
   contactRow: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 6,
-    fontSize: 9,
+    gap: 10 * k,
+    marginTop: 6 * k,
+    fontSize: 9 * k,
     color: "#4a4540",
   },
   section: {
-    marginTop: 14,
+    marginTop: 14 * k,
   },
   sectionTitle: {
-    fontSize: 10,
+    fontSize: 10 * k,
     fontFamily: "Helvetica-Bold",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     borderBottomWidth: 1,
     borderBottomColor: "#dedad2",
-    paddingBottom: 3,
-    marginBottom: 6,
+    paddingBottom: 3 * k,
+    marginBottom: 6 * k,
   },
   entry: {
-    marginBottom: 8,
+    marginBottom: 8 * k,
   },
   entryHeaderRow: {
     flexDirection: "row",
@@ -46,49 +47,55 @@ const styles = StyleSheet.create({
   },
   entryTitle: {
     fontFamily: "Helvetica-Bold",
-    fontSize: 10.5,
+    fontSize: 10.5 * k,
   },
   entryDates: {
-    fontSize: 9,
+    fontSize: 9 * k,
     color: "#6b6660",
   },
   entrySubtitle: {
-    fontSize: 9.5,
+    fontSize: 9.5 * k,
     color: "#4a4540",
-    marginBottom: 2,
+    marginBottom: 2 * k,
   },
   bullet: {
     flexDirection: "row",
-    marginTop: 1.5,
+    marginTop: 1.5 * k,
   },
   bulletDot: {
     width: 10,
-    fontSize: 9.5,
+    fontSize: 9.5 * k,
   },
   bulletText: {
-    fontSize: 9.5,
+    fontSize: 9.5 * k,
     flex: 1,
     lineHeight: 1.35,
   },
   skillsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 4,
+    gap: 4 * k,
   },
   skillChip: {
-    fontSize: 9,
+    fontSize: 9 * k,
     backgroundColor: "#e9d9c8",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 2,
   },
 });
+}
 
 function formatRange(start: string, end: string | null) {
   return `${start} — ${end ?? "present"}`;
 }
 
-export function ResumeDocument({ profile }: { profile: Profile }) {
+export type ResumeDensity = "comfortable" | "compact";
+
+const SCALE: Record<ResumeDensity, number> = { comfortable: 1, compact: 0.88 };
+
+export function ResumeDocument({ profile, density = "comfortable" }: { profile: Profile; density?: ResumeDensity }) {
+  const styles = makeStyles(SCALE[density]);
   return (
     <Document title={`${profile.name} — Resume`}>
       <Page size="A4" style={styles.page}>

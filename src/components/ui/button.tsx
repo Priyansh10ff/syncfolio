@@ -17,6 +17,15 @@ const SIZES: Record<Size, string> = {
   md: "h-8 px-3 text-[13px] gap-2",
 };
 
+/** Button styling for links (`<a>`/`<Link>`) that should look like a button. */
+export function buttonClassName({ variant = "secondary", size = "md" }: { variant?: Variant; size?: Size } = {}) {
+  return cn(
+    "inline-flex items-center justify-center rounded-sm font-mono whitespace-nowrap select-none transition-colors duration-100",
+    VARIANTS[variant],
+    SIZES[size]
+  );
+}
+
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: Size;

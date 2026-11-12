@@ -1,126 +1,103 @@
 "use client";
 
-import { useState } from "react";
-import { PendingUpdateRow } from "@/lib/schema/pending-update-row";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+import { Kbd } from "@/components/ui";
+import { api } from "@/lib/api/client";
+import { cn } from "@/lib/cn";
+import { useHotkey } from "@/lib/hotkeys";
 
-type PendingRow = PendingUpdateRow;
+type ParseResponse = { pending: unknown[]; clarification_needed: string | null };
 
-export default function UpdatesClient({
-  initialPending,
-}: {
-  initialPending: PendingRow[];
-}) {
+/**
+ * The note prompt: one sentence in, drafted proposals out. Enter submits,
+ * Shift+Enter adds a line, "/" focuses it from anywhere on the page.
+ * A clarifying question from the model is answered on the same line.
+ */
+export function NoteBox({ aiConfigured }: { aiConfigured: boolean }) {
+  const router = useRouter();
+  const ref = useRef<HTMLTextAreaElement>(null);
   const [note, setNote] = useState("");
-  const [pending, setPending] = useState<PendingRow[]>(initialPending);
-  const [loading, setLoading] = useState(false);
+  const [context, setContext] = useState<string | null>(null);
+  const [question, setQuestion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notConfigured, setNotConfigured] = useState(false);
-  const [clarification, setClarification] = useState<string | null>(null);
+  const [notConfigured, setNotConfigured] = useState(!aiConfigured);
+  const [loading, setLoading] = useState(false);
+  const [drafted, setDrafted] = useState<number | null>(null);
+
+  useHotkey("/", () => ref.current?.focus(), { description: "Write an update", group: "Updates" });
 
   async function submit() {
-    if (!note.trim()) return;
+    const text = note.trim();
+    if (!text || loading) return;
     setLoading(true);
     setError(null);
-    setClarification(null);
-
-    const res = await fetch("/api/updates/parse", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      if (data.not_configured) {
-        setNotConfigured(true);
+    setDrafted(null);
+    const full = context ? `${context}\n(answer to "${question}": ${text})` : text;
+    try {
+      const res = await api<ParseResponse>("/api/updates/parse", "POST", { note: full });
+      if (res.clarification_needed && res.pending.length === 0) {
+        setContext(full);
+        setQuestion(res.clarification_needed);
+        setNote("");
       } else {
-        setError(data.error ?? "Something went wrong.");
+        setContext(null);
+        setQuestion(null);
+        setNote("");
+        setDrafted(res.pending.length);
+        router.refresh();
       }
-    } else if (data.clarification_needed) {
-      setClarification(data.clarification_needed);
-    } else {
-      setPending([...data.pending, ...pending]);
-      setNote("");
+    } catch (e) {
+      const err = e as Error & { data?: { not_configured?: boolean } };
+      if (err.data?.not_configured) setNotConfigured(true);
+      else setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }
-
-  async function resolve(id: string, decision: "approve" | "reject") {
-    setPending((p) => p.filter((row) => row.id !== id));
-    await fetch("/api/updates/apply", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, decision }),
-    });
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <section id="note" className="flex flex-col gap-2">
       {notConfigured && (
-        <div className="text-sm border border-[var(--sf-line)] rounded px-3 py-2 bg-[var(--sf-thread-soft)]">
-          AI updates need a model provider configured — Claude, GPT, Gemini, or a
-          local model. See the Configuration section in the README. Until then,
-          add and edit everything by hand on the{" "}
-          <a href="/dashboard/profile" className="underline">
-            Profile page
-          </a>{" "}
-          — that always works.
+        <p className="font-mono text-xs text-thread border border-line bg-surface rounded-sm px-3 py-2">
+          no AI model configured — set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY or LOCAL_AI_BASE_URL. You can still edit everything on the profile page.
+        </p>
+      )}
+      {question && (
+        <div className="font-mono text-[13px] border border-line bg-surface rounded-sm px-3 py-2 flex flex-col gap-1">
+          <span className="text-thread">? {question}</span>
+          <button type="button" className="self-start text-[11px] text-muted hover:text-ink" onClick={() => { setContext(null); setQuestion(null); }}>
+            start over
+          </button>
         </div>
       )}
-      <div className="flex flex-col gap-2">
+      <div className={cn("flex items-start gap-3 border rounded-sm bg-surface px-4 py-3 transition-colors", loading ? "border-thread" : "border-line-strong focus-within:border-thread")}>
+        <span aria-hidden className="font-mono text-thread text-lg leading-7">›</span>
+        <label htmlFor="note-input" className="sr-only">What changed?</label>
         <textarea
-          className="border border-[var(--sf-line)] rounded px-3 py-2 text-sm bg-surface focus:outline-none focus:ring-1 focus:ring-[var(--sf-thread)]"
-          rows={3}
-          placeholder="e.g. Added Redis caching to Patchwork, cut p95 latency 40%"
+          id="note-input"
+          ref={ref}
+          rows={1}
           value={note}
+          disabled={loading || notConfigured}
           onChange={(e) => setNote(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void submit();
+            }
+          }}
+          placeholder={question ? "answer here" : "shipped redis caching on patchwork, p95 down 40%"}
+          className="flex-1 resize-none bg-transparent outline-none font-mono text-[15px] leading-7 field-sizing-content min-h-7 max-h-40"
         />
-        <button
-          onClick={submit}
-          disabled={loading || !note.trim()}
-          className="self-start bg-[var(--sf-thread)] text-thread-ink rounded px-4 py-2 text-sm disabled:opacity-50"
-        >
-          {loading ? "Thinking…" : "Draft update"}
-        </button>
-        {error && <p className="text-sm text-del">{error}</p>}
-        {clarification && (
-          <p className="text-sm text-[var(--sf-muted)]">{clarification}</p>
-        )}
+        <span className="font-mono text-[11px] text-muted leading-7 shrink-0">
+          {loading ? <span className="animate-pulse">drafting…</span> : <><Kbd>↵</Kbd> draft</>}
+        </span>
       </div>
-
-      <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
-          Pending review
-        </h2>
-        {pending.length === 0 && (
-          <p className="text-sm text-[var(--sf-muted)]">Nothing waiting on you.</p>
-        )}
-        {pending.map((row) => (
-          <div
-            key={row.id}
-            className="flex items-center justify-between border border-[var(--sf-line)] rounded px-3 py-2"
-          >
-            <div>
-              <div className="text-sm">{row.diff_summary}</div>
-              <div className="text-xs text-[var(--sf-muted)]">{row.target_table}</div>
-            </div>
-            <div className="flex gap-2 text-sm">
-              <button
-                onClick={() => resolve(row.id, "approve")}
-                className="text-[var(--sf-thread)] hover:underline"
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => resolve(row.id, "reject")}
-                className="text-[var(--sf-muted)] hover:underline"
-              >
-                Reject
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="flex justify-between font-mono text-[11px] text-muted min-h-4">
+        <span>{error ? <span className="text-del">{error}</span> : drafted !== null ? (drafted ? `${drafted} proposal${drafted === 1 ? "" : "s"} drafted ↓` : "nothing to change") : "nothing saves until you approve"}</span>
+        <span className="hidden sm:inline"><Kbd>/</Kbd> to focus · <Kbd>⇧↵</Kbd> new line</span>
       </div>
-    </div>
+    </section>
   );
 }

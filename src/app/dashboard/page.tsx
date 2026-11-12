@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { getDashboardContext, isProfileEmpty } from "@/lib/dashboard";
 
-export default function DashboardIndex() {
-  redirect("/dashboard/profile");
+export default async function DashboardIndex() {
+  const { profile } = await getDashboardContext();
+  redirect(isProfileEmpty(profile) ? "/dashboard/welcome" : "/dashboard/profile");
 }

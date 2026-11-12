@@ -1,4 +1,4 @@
-export { Button, type ButtonProps } from "./button";
+export { Button, buttonClassName, type ButtonProps } from "./button";
 export { Kbd } from "./kbd";
 export { Input, Textarea, Label, Field } from "./input";
 export { InlineField } from "./inline-field";
@@ -12,5 +12,6 @@ export { StatusBar, type StatusItem } from "./status-bar";
 export { Dialog } from "./dialog";
 export { ToastProvider, useToast, type ToastInput } from "./toast";
 export { ShortcutsOverlay } from "./shortcuts-overlay";
-export { CommandPalette, scoreCommand, type Command } from "./command-palette";
+export { CommandPalette, openCommandPalette, scoreCommand, type Command } from "./command-palette";
 export { ThemeToggle } from "./theme-toggle";
+export { Grain } from "./grain";

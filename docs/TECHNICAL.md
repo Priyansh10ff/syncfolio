@@ -52,7 +52,8 @@ and the rules the codebase follows. For the why and the who, see
 │   │   │   ├── updates/          AI note box + review queue
 │   │   │   ├── resume/           live preview + PDF download (resume module)
 │   │   │   ├── portfolio/        publish, unpublished changes, token, webhook (portfolio module)
-│   │   │   ├── settings/         module toggles, auto-sync default
+│   │   │   ├── settings/         module toggles, auto-sync default, theme, account
+│   │   │   ├── welcome/          first-run setup: modules → name → GitHub scan
 │   │   │   └── sync/             GitHub scan + external-sync review queue
 │   │   └── api/
 │   │       ├── profile/          GET live profile (session only)
@@ -76,6 +77,7 @@ and the rules the codebase follows. For the why and the who, see
 │   │       └── resume/pdf/       render profile → PDF
 │   ├── components/
 │   │   ├── providers.tsx         hotkeys + toasts + ? overlay for client screens
+│   │   ├── app/                  app screens' building blocks: shell, review queue, history, tabs, profile editors
 │   │   ├── ui/                   design-system primitives (see "UI system" below)
 │   │   └── landing/              public landing page ("Desk"), see "Landing page" below
 │   └── lib/
@@ -93,6 +95,9 @@ and the rules the codebase follows. For the why and the who, see
 │       ├── portfolio/publish.ts  build snapshot, diff vs last, fire webhook
 │       ├── current-profile-id.ts resolve signed-in user's profile id
 │       ├── safe-next.ts          validates post-login redirect paths
+│       ├── dashboard.ts          server data for dashboard pages (context, shell status, review items)
+│       ├── api/client.ts         browser fetch helper that throws the server's error message
+│       ├── time.ts               "4m ago" formatting
 │       ├── hotkeys.tsx           keyboard shortcut registry (useHotkey, sequences)
 │       ├── diff.ts               field-level diff for proposals and publishes
 │       ├── theme.ts              dark/light theme, applied before first paint
@@ -219,6 +224,7 @@ Token routes use the service-role client and look the profile up by
 | POST / PATCH / DELETE | `/api/education` | session | CRUD |
 | POST | `/api/updates/parse` | session | Note → proposed diffs |
 | GET | `/api/updates/pending` | session | Unresolved diffs |
+| PATCH | `/api/updates/pending` | session | `{ id, payload }` — edit a proposal's fields before approving (allowlisted) |
 | GET | `/api/updates/history` | session | 50 most recently resolved diffs |
 | POST | `/api/updates/undo` | session | `{ id, sync_portfolio? }` — reverts the most recent approval only |
 | POST | `/api/updates/apply` | session | `{ id, decision: "approve" \| "reject", sync_portfolio?: boolean }` (defaults to `portfolio_auto_sync`) |
@@ -379,6 +385,26 @@ in Bricolage Grotesque, Caveat and JetBrains Mono (self-hosted, like Plex).
 - **Safe by default:** every property defaults to its finished value, so
   without JS or with reduced motion the page is complete and static.
   Under 1100px wide the scenes unpin and render finished.
+
+## App screens
+
+Every dashboard page is a server component that loads its data through
+`lib/dashboard.ts` and hands it to a client component built from
+`components/ui`. The layout wraps everything in `components/app/app-shell.tsx`.
+
+| Screen | What it does | Keys |
+|---|---|---|
+| Shell | Sidebar with pending/unpublished counts, status bar (AI model, last save, queue, publish state), ⌘K palette | `g p/u/r/o/y/,` navigate, `⌘K`, `?` |
+| Updates | Prompt line → AI proposals as diffs; edit before approving; per-item portfolio sync; undo toast; history tab | `/` focus, `j/k`, `a`, `r`, `e`, `s` |
+| Profile | Click-to-edit basics and links; every section's rows expand into self-saving fields (bullet lists, tags, links, dates); R/P switches; reorder; two-click delete | — |
+| Resume | Outline with R switches beside the live A4 preview; comfortable/compact density (also applied to the PDF) | `d` download, `c` density |
+| Portfolio | Unpublished changes as diffs, publish, history, endpoint + Next.js/Astro/fetch snippets, webhook, token rotation (type "rotate") | `⌘↵` publish |
+| Sync | GitHub username + scan, the same review queue for GitHub and site edits, external-sync example | `j/k/a/r/e/s` |
+| Welcome | First-run setup, shown when the profile is empty | `↵` |
+
+`components/app/profile/specs.ts` describes every profile field once
+(kind, validation, portfolio-only); the editors and the resume outline
+both read it, so adding a field is one entry there.
 
 ## Conventions
 

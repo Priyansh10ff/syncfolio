@@ -1,197 +1,201 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useSyncExternalStore } from "react";
+import { Tabs } from "@/components/app/tabs";
+import { Button, DataTable, DiffView, EmptyState, InlineField, Input, Kbd, Label, SectionHeader, Tag, useToast } from "@/components/ui";
+import { api } from "@/lib/api/client";
+import { diffRecords } from "@/lib/diff";
+import { useHotkey } from "@/lib/hotkeys";
+import { ago } from "@/lib/time";
 import type { PortfolioChange } from "@/lib/portfolio/publish";
 
-export default function PortfolioClient({
+export type PendingChange = PortfolioChange & {
+  key: string;
+  label: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+};
+
+const useOrigin = () =>
+  useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => ""
+  );
+
+const snippets = (url: string) => ({
+  "next.js": `// app/projects/page.tsx
+const res = await fetch("${url}", { next: { tags: ["syncfolio"] } });
+const { projects } = await res.json();`,
+  astro: `---
+// src/pages/projects.astro
+const { projects } = await fetch("${url}").then((r) => r.json());
+---
+{projects.map((p) => <h2>{p.name}</h2>)}`,
+  fetch: `const portfolio = await fetch("${url}").then((r) => r.json());
+// portfolio.experience, .projects, .skills, .education, .published_at`,
+});
+
+export default function PortfolioWorkspace({
+  pending,
+  history,
+  lastPublishedAt,
   publicToken,
   webhookUrl,
-  initialChanges,
-  initialPublishedAt,
   autoSync,
 }: {
-  publicToken: string | null;
+  pending: PendingChange[];
+  history: { id: string; published_at: string; count: number }[];
+  lastPublishedAt: string | null;
+  publicToken: string;
   webhookUrl: string | null;
-  initialChanges: PortfolioChange[];
-  initialPublishedAt: string | null;
   autoSync: boolean;
 }) {
-  const [changes, setChanges] = useState(initialChanges);
-  const [publishedAt, setPublishedAt] = useState(initialPublishedAt);
+  const router = useRouter();
+  const toast = useToast();
+  const origin = useOrigin();
+  const [token, setToken] = useState(publicToken);
   const [publishing, setPublishing] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
+  const [rotateText, setRotateText] = useState("");
+  const [copied, setCopied] = useState(false);
+  const endpoint = `${origin}/api/portfolio?token=${token}`;
+  const canPublish = pending.length > 0 || !lastPublishedAt;
 
   async function publish() {
+    if (!canPublish || publishing) return;
     setPublishing(true);
-    setPublishError(null);
-    const res = await fetch("/api/portfolio/publish", { method: "POST" });
-    const data = await res.json();
-    setPublishing(false);
-    if (!res.ok) {
-      setPublishError(data.error ?? "Publish failed.");
-      return;
+    try {
+      const res = await api<{ published: boolean; changes: unknown[] }>("/api/portfolio/publish", "POST");
+      toast({ message: res.published ? `published ${res.changes.length} change${res.changes.length === 1 ? "" : "s"}` : "already up to date", tone: "ok" });
+      router.refresh();
+    } catch (e) {
+      toast({ message: (e as Error).message, tone: "error" });
+    } finally {
+      setPublishing(false);
     }
-    setChanges([]);
-    if (data.published_at) setPublishedAt(data.published_at);
   }
-  const [token, setToken] = useState(publicToken);
-  const [webhook, setWebhook] = useState(webhookUrl ?? "");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const apiUrl = token ? `${origin}/api/portfolio?token=${token}` : "";
+  useHotkey("mod+enter", publish, { description: "Publish portfolio", group: "Portfolio", enabled: canPublish, allowInInputs: true });
+
+  async function rotate() {
+    try {
+      const res = await api<{ public_token: string }>("/api/profile/token", "POST");
+      setToken(res.public_token);
+      setRotateText("");
+      toast({ message: "token rotated — the old URL no longer works", tone: "ok" });
+    } catch (e) {
+      toast({ message: (e as Error).message, tone: "error" });
+    }
+  }
 
   async function copy() {
-    await navigator.clipboard.writeText(apiUrl);
+    await navigator.clipboard.writeText(endpoint);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
 
-  async function regenerateToken() {
-    const res = await fetch("/api/profile/token", { method: "POST" });
-    const data = await res.json();
-    if (res.ok) setToken(data.public_token);
-  }
-
-  async function saveWebhook() {
-    setSaving(true);
-    const res = await fetch("/api/profile/webhook", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ webhook_url: webhook }),
-    });
-    setSaving(false);
-    if (res.ok) {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
-          Publish
-        </h2>
-        <p className="text-sm text-[var(--sf-muted)]">
-          {publishedAt
-            ? `Last published ${new Date(publishedAt).toLocaleString()}.`
-            : "Nothing published yet — your site gets a 404 until you publish once."}{" "}
-          Auto-sync on approval is {autoSync ? "on" : "off"}.
+    <div className="flex flex-col gap-12">
+      <section className="flex flex-col gap-4" aria-labelledby="sec-publish">
+        <SectionHeader
+          id="sec-publish"
+          title="unpublished"
+          count={pending.length}
+          actions={
+            <Button variant="primary" size="sm" onClick={publish} loading={publishing} disabled={!canPublish} shortcut="⌘↵">
+              publish{pending.length ? ` ${pending.length}` : ""}
+            </Button>
+          }
+        />
+        <p className="font-mono text-[11px] text-muted">
+          {lastPublishedAt ? `last published ${ago(lastPublishedAt)}` : "never published — your endpoint returns 404 until you do"} · auto-sync on approval:{" "}
+          <Link href="/dashboard/settings" className={autoSync ? "text-add" : "text-muted"}>{autoSync ? "on" : "off"}</Link>
         </p>
-        {changes.length > 0 ? (
-          <ul className="text-xs border border-[var(--sf-line)] rounded px-3 py-2 bg-surface flex flex-col gap-1">
-            {changes.map((c, i) => (
-              <li key={`${c.section}-${c.id ?? i}`}>
-                <span className="text-[var(--sf-muted)]">{c.action}</span> {c.section}
-                {c.id ? <span className="text-[var(--sf-muted)]"> · {c.id.slice(0, 8)}</span> : null}
-              </li>
-            ))}
-          </ul>
+        {pending.length === 0 ? (
+          <EmptyState>everything on your site matches your profile</EmptyState>
         ) : (
-          <p className="text-sm">Everything is published.</p>
+          <div className="flex flex-col gap-3">
+            {pending.map((c) => (
+              <DiffView
+                key={c.key}
+                title={<>{c.section} <span className="text-faint">/</span> {c.label}</>}
+                meta={<Tag tone={c.action === "create" ? "add" : c.action === "delete" ? "del" : "neutral"}>{c.action}</Tag>}
+                changes={diffRecords(c.before, c.after, { ignore: ["sort_order", "show_on_resume", "show_on_portfolio"] })}
+              />
+            ))}
+          </div>
         )}
-        <button
-          onClick={publish}
-          disabled={publishing || (changes.length === 0 && !!publishedAt)}
-          className="self-start bg-[var(--sf-thread)] text-thread-ink rounded px-4 py-2 text-sm disabled:opacity-50"
-        >
-          {publishing
-            ? "Publishing…"
-            : `Publish${changes.length ? ` ${changes.length} change${changes.length === 1 ? "" : "s"}` : ""}`}
-        </button>
-        {publishError && <p className="text-sm text-del">{publishError}</p>}
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
-          Your data endpoint
-        </h2>
-        <p className="text-sm text-[var(--sf-muted)]">
-          Any framework — Next.js, Astro, Hugo, plain HTML+fetch — can pull this
-          at build time or request time.
-        </p>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs border border-[var(--sf-line)] rounded px-3 py-2 bg-surface overflow-x-auto whitespace-nowrap">
-            {apiUrl || "Sign in to get your endpoint"}
-          </code>
-          <button
-            onClick={copy}
-            disabled={!apiUrl}
-            className="shrink-0 border border-[var(--sf-line)] rounded p-2 hover:bg-[var(--sf-thread-soft)] disabled:opacity-40"
-            aria-label="Copy"
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-          </button>
+      <section className="flex flex-col gap-4" aria-labelledby="sec-endpoint">
+        <SectionHeader id="sec-endpoint" title="endpoint" />
+        <div className="flex items-stretch gap-2">
+          <code className="flex-1 min-w-0 font-mono text-[12px] bg-surface border border-line rounded-sm px-3 py-2 overflow-x-auto whitespace-nowrap">{endpoint}</code>
+          <Button onClick={copy}>{copied ? "copied" : "copy"}</Button>
         </div>
-        <button
-          onClick={regenerateToken}
-          className="self-start text-xs text-[var(--sf-muted)] hover:underline"
-        >
-          Regenerate token (invalidates the current URL)
-        </button>
+        <Tabs
+          tabs={Object.entries(snippets(endpoint)).map(([id, code]) => ({
+            id,
+            label: id,
+            panel: <pre className="font-mono text-[12px] leading-6 bg-surface border border-line rounded-sm p-4 overflow-x-auto">{code}</pre>,
+          }))}
+        />
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
-          Publish webhook
-        </h2>
-        <p className="text-sm text-[var(--sf-muted)]">
-          Called once per publish, listing every section that changed — a
-          Vercel deploy hook, or your own API route that revalidates just the
-          affected pages.
+      <section className="flex flex-col gap-4" aria-labelledby="sec-webhook">
+        <SectionHeader id="sec-webhook" title="webhook" />
+        <p className="text-[13px] text-muted max-w-prose">
+          Called once per publish with <code className="font-mono text-ink">{"{ published_at, changes: [{ section, action, id }] }"}</code> — revalidate just those pages.
         </p>
-        <div className="flex items-center gap-2">
-          <input
-            className="flex-1 text-sm border border-[var(--sf-line)] rounded px-3 py-2 bg-surface"
-            placeholder="https://your-portfolio.com/api/syncfolio-webhook"
-            value={webhook}
-            onChange={(e) => setWebhook(e.target.value)}
+        <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-4 items-start">
+          <Label className="pt-1">url</Label>
+          <InlineField
+            label="Webhook URL"
+            mono
+            value={webhookUrl ?? ""}
+            placeholder="https://your-site.dev/api/revalidate"
+            validate={(v) => (v === "" || /^https?:\/\/\S+$/.test(v) ? null : "Use a full URL")}
+            onSave={async (v) => {
+              await api("/api/profile/webhook", "PATCH", { webhook_url: v });
+              router.refresh();
+            }}
           />
-          <button
-            onClick={saveWebhook}
-            disabled={saving}
-            className="shrink-0 bg-[var(--sf-thread)] text-thread-ink rounded px-4 py-2 text-sm disabled:opacity-50"
-          >
-            {saved ? "Saved" : saving ? "Saving…" : "Save"}
-          </button>
         </div>
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
-          Example: Next.js receiver
-        </h2>
-        <p className="text-sm text-[var(--sf-muted)]">
-          A minimal route that revalidates only the changed section on your
-          portfolio, instead of rebuilding the whole site.
-        </p>
-        <pre className="text-xs border border-[var(--sf-line)] rounded p-3 bg-surface overflow-x-auto">
-{`// app/api/syncfolio-webhook/route.ts
-import { revalidatePath } from "next/cache";
-
-export async function POST(req: Request) {
-  const { changes } = await req.json();
-  const sections = new Set(changes.map((c: { section: string }) => c.section));
-  for (const section of sections) revalidatePath(\`/\${section}\`); // e.g. /projects
-  return Response.json({ ok: true });
-}`}
-        </pre>
+      <section className="flex flex-col gap-4" aria-labelledby="sec-history">
+        <SectionHeader id="sec-history" title="publish history" count={history.length} />
+        {history.length === 0 ? (
+          <EmptyState>no publishes yet</EmptyState>
+        ) : (
+          <DataTable
+            label="Publish history"
+            rows={history}
+            rowKey={(h) => h.id}
+            columns={[
+              { key: "when", header: "published", render: (h) => <span title={h.published_at}>{ago(h.published_at)}</span> },
+              { key: "count", header: "changes", align: "right", width: "w-28", render: (h) => h.count },
+            ]}
+          />
+        )}
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-[var(--sf-muted)] uppercase tracking-wide">
-          Edited your portfolio directly?
-        </h2>
-        <p className="text-sm text-[var(--sf-muted)]">
-          Have your site POST changes to{" "}
-          <code className="text-xs">/api/profile/external-sync</code> with the
-          same token. They land as pending suggestions on the Sync page — nothing
-          overwrites your data silently.
-        </p>
+      <section className="flex flex-col gap-3" aria-labelledby="sec-token">
+        <SectionHeader id="sec-token" title="public token" />
+        <p className="text-[13px] text-muted max-w-prose">Anyone with the endpoint URL can read your published portfolio. Rotating it breaks the old URL immediately — update your site afterwards.</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (rotateText === "rotate") void rotate();
+          }}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <label htmlFor="rotate" className="font-mono text-[12px] text-muted">type <Kbd>rotate</Kbd> to confirm</label>
+          <Input id="rotate" value={rotateText} onChange={(e) => setRotateText(e.target.value)} className="w-32 h-7" autoComplete="off" />
+          <Button size="sm" variant="danger" type="submit" disabled={rotateText !== "rotate"}>rotate token</Button>
+        </form>
       </section>
     </div>
   );
